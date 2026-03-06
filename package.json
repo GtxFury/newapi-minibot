@@ -1,0 +1,20 @@
+{
+  "name": "bilapi-telegram-bot",
+  "version": "0.1.0",
+  "description": "面向 BilAPI/NewAPI 的 Telegram Bot（充值、兑换、API Key、用量查询）",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "check": "node --check src/index.js && node --check src/bot.js && node --check src/newapiClient.js && node --check src/store.js && node --check src/formatters.js && node --check src/config.js && node --check src/telegramRegisterService.js && node --check src/miniappServer.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "axios": "^1.8.4",
+    "dotenv": "^16.4.5",
+    "telegraf": "^4.16.3"
+  }
+}

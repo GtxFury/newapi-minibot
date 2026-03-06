@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <meta name="color-scheme" content="light dark" />
+    <title>BilAPI - Ultimate</title>
+    <link rel="stylesheet" href="/miniapp/styles.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-balance" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 18H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5" />
+        <path d="M18 12h.01" />
+        <path d="M19 22v-6" />
+        <path d="m22 19-3-3-3 3" />
+        <path d="M6 12h.01" />
+        <circle cx="12" cy="12" r="2" />
+      </symbol>
+      <symbol id="icon-topup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" />
+        <path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" />
+        <path d="m2 16 6 6" />
+        <circle cx="16" cy="9" r="2.9" />
+        <circle cx="6" cy="5" r="3" />
+      </symbol>
+      <symbol id="icon-invite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 21a8 8 0 0 0-16 0" />
+        <circle cx="10" cy="8" r="5" />
+        <path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3" />
+      </symbol>
+      <symbol id="icon-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+        <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" stroke="none" />
+      </symbol>
+      <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="7" height="9" x="3" y="3" rx="1" />
+        <rect width="7" height="5" x="14" y="3" rx="1" />
+        <rect width="7" height="9" x="14" y="12" rx="1" />
+        <rect width="7" height="5" x="3" y="16" rx="1" />
+      </symbol>
+      <symbol id="icon-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 10h10" />
+        <path d="M7 14h6" />
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 4v-4H6.5A2.5 2.5 0 0 1 4 13.5v-8Z" />
+      </symbol>
+      <symbol id="icon-models" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.97 12.92A2 2 0 0 0 2 14.63v3.24a2 2 0 0 0 .97 1.71l3 1.8a2 2 0 0 0 2.06 0L12 19v-5.5l-5-3-4.03 2.42Z" />
+        <path d="m7 16.5-4.74-2.85" />
+        <path d="m7 16.5 5-3" />
+        <path d="M7 16.5v5.17" />
+        <path d="M12 13.5V19l3.97 2.38a2 2 0 0 0 2.06 0l3-1.8a2 2 0 0 0 .97-1.71v-3.24a2 2 0 0 0-.97-1.71L17 10.5l-5 3Z" />
+        <path d="m17 16.5-5-3" />
+        <path d="m17 16.5 4.74-2.85" />
+        <path d="M17 16.5v5.17" />
+        <path d="M7.97 4.42A2 2 0 0 0 7 6.13v4.37l5 3 5-3V6.13a2 2 0 0 0-.97-1.71l-3-1.8a2 2 0 0 0-2.06 0l-3 1.8Z" />
+        <path d="M12 8 7.26 5.15" />
+        <path d="m12 8 4.74-2.85" />
+        <path d="M12 13.5V8" />
+      </symbol>
+      <symbol id="icon-logs" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+        <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+        <path d="M10 9H8" />
+        <path d="M16 13H8" />
+        <path d="M16 17H8" />
+      </symbol>
+      <symbol id="icon-finance" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect width="18" height="18" x="3" y="3" rx="2" />
+        <path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2" />
+        <path d="M3 11h3c.8 0 1.6.3 2.1.9l1.1.9c1.6 1.6 4.1 1.6 5.7 0l1.1-.9c.5-.5 1.3-.9 2.1-.9H21" />
+      </symbol>
+    </svg>
+    <div class="ambient-glow"></div>
+    <div class="mesh-gradient"></div>
+
+    <main class="app-container" id="appRoot">
+      <header class="main-header glass">
+        <div class="brand">
+          <img src="/logo.png" alt="Logo" class="app-logo" />
+          <div class="brand-text">
+            <h1 class="app-title">BilAPI</h1>
+            <p class="app-subtitle" id="authBadge">Syncing...</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="themeBtn" class="action-circle">
+            <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-15.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2m-15.66 5.66 1.41-1.41m11.32-11.32 1.41-1.41"/></svg>
+          </button>
+          <button id="refreshBtn" class="action-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="content-scroll" id="scrollArea">
+        
+        <!-- Dashboard -->
+        <section class="panel active" id="panel-overview">
+          <div class="welcome-section">
+            <h2 class="greeting">你好，<span id="userName">User</span></h2>
+            <p class="date-now" id="currentDate">--</p>
+          </div>
+
+          <div class="card premium-card hero-card">
+            <div class="hero-content">
+              <div class="hero-main">
+                <span class="label">可用余额</span>
+                <div class="value-row">
+                  <span class="symbol">$</span>
+                  <span id="statBalance" class="value">0.00</span>
+                </div>
+              </div>
+              <div class="hero-accent-icon">
+                <div class="icon-gradient-sphere"></div>
+                <svg class="ui-icon hero-symbol" viewBox="0 0 24 24"><use href="#icon-balance"></use></svg>
+              </div>
+            </div>
+            <div class="hero-footer">
+              <div class="mini-stat">
+                <span class="m-label">历史消耗</span>
+                <span id="statUsage" class="m-value">-</span>
+              </div>
+              <div class="mini-stat">
+                <span class="m-label">请求次数</span>
+                <span id="statSub" class="m-value">0</span>
+              </div>
+              <div class="mini-stat">
+                <span class="m-label">累计返利</span>
+                <span id="statAffiliate" class="m-value" style="color: var(--success);">-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-group">
+            <div class="group-header"><h3>快捷服务</h3></div>
+            <div class="quick-tiles">
+              <button class="quick-link" data-nav-tab="finance">
+                <span class="quick-link-icon" aria-hidden="true">
+                  <svg class="quick-link-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#quickTopupGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                      <linearGradient id="quickTopupGrad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#ff7a18" />
+                        <stop offset="1" stop-color="#ffb800" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" />
+                    <path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" />
+                    <path d="m2 16 6 6" />
+                    <circle cx="16" cy="9" r="2.9" />
+                  </svg>
+                </span>
+                <span>充值</span>
+              </button>
+              <button class="quick-link" id="inviteBtn">
+                <span class="quick-link-icon" aria-hidden="true">
+                  <svg class="quick-link-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#quickInviteGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                      <linearGradient id="quickInviteGrad" x1="2" y1="4" x2="22" y2="20" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#34c759" />
+                        <stop offset="1" stop-color="#00c7be" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M18 21a8 8 0 0 0-16 0" />
+                    <circle cx="10" cy="8" r="5" />
+                    <path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3" />
+                  </svg>
+                </span>
+                <span>邀请赚钱</span>
+              </button>
+              <button class="quick-link" data-nav-tab="keys">
+                <span class="quick-link-icon" aria-hidden="true">
+                  <svg class="quick-link-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#quickKeyGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                      <linearGradient id="quickKeyGrad" x1="2" y1="3" x2="22" y2="21" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#1f2937" />
+                        <stop offset="1" stop-color="#6b7280" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+                    <circle cx="16.5" cy="7.5" r=".5" fill="#4b5563" stroke="none" />
+                  </svg>
+                </span>
+                <span>密钥</span>
+              </button>
+              <button class="quick-link" id="openModelsPageBtn" type="button">
+                <span class="quick-link-icon" aria-hidden="true">
+                  <svg class="quick-link-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#quickModelsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                      <linearGradient id="quickModelsGrad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#0a84ff" />
+                        <stop offset="1" stop-color="#5e5ce6" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M12 3 4 7.5 12 12l8-4.5L12 3Z" />
+                    <path d="M4 12l8 4.5 8-4.5" />
+                    <path d="M4 16.5 12 21l8-4.5" />
+                  </svg>
+                </span>
+                <span>模型</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card glass usage-card">
+            <div class="card-header">
+              <h3>模型消耗分布</h3>
+              <div class="segmented-pill" id="usageRangeButtons">
+                <button class="seg-btn active" data-days="7">7天</button>
+                <button class="seg-btn" data-days="30">30天</button>
+              </div>
+            </div>
+            <div id="usageBlock" class="bar-visualizer"></div>
+          </div>
+        </section>
+
+        <!-- Chat -->
+        <section class="panel panel-chat" id="panel-chat">
+          <div class="chat-shell">
+            <div class="chat-toolbar">
+              <div class="chat-toolbar-head">
+                <div class="chat-toolbar-main">
+                  <button id="chatSessionsBtn" class="action-circle" type="button" aria-label="会话管理">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+                  </button>
+                  <div>
+                    <div class="chat-toolbar-title-row">
+                      <h3 id="chatSessionTitle">新对话</h3>
+                      <button id="chatNewSessionBtn" class="chat-inline-action" type="button">新建</button>
+                    </div>
+                  <p id="chatStatusText" class="chat-status-text">正在同步聊天环境...</p>
+                  </div>
+                </div>
+                <span class="chat-toolbar-meta" id="chatKeyBadge">当前模型</span>
+              </div>
+            </div>
+
+            <div class="chat-sessions-drawer" id="chatSessionsDrawer" hidden>
+              <div class="chat-sessions-backdrop" id="chatSessionsBackdrop"></div>
+              <aside class="chat-sessions-panel glass">
+                <div class="chat-sessions-head">
+                  <div>
+                    <strong>会话管理</strong>
+                    <p>像 ChatGPT 一样切换和管理对话</p>
+                  </div>
+                  <button id="chatSessionsCloseBtn" class="action-circle" type="button" aria-label="关闭会话列表">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                  </button>
+                </div>
+                <button id="chatSessionsCreateBtn" class="ghost-button chat-sessions-create" type="button">开始新对话</button>
+                <div class="chat-sessions-list" id="chatSessionsList"></div>
+              </aside>
+            </div>
+
+            <div class="card glass chat-setup-card" id="chatEmptyState" hidden>
+              <div class="chat-setup-copy">
+                <h3 id="chatEmptyTitle">当前还没有可用的聊天 Key</h3>
+                <p id="chatKeyHint">点击下方按钮后，将自动创建一个聊天专用 API Key，并立即为你加载可用模型。</p>
+              </div>
+              <button id="chatEnsureBtn" class="primary-button">自动创建并开始</button>
+            </div>
+
+            <div class="chat-thread" id="chatMessages"></div>
+
+            <div class="chat-composer glass" id="chatComposer">
+              <textarea id="chatInput" placeholder="输入消息，开始和模型对话..." rows="1"></textarea>
+              <div class="chat-composer-footer">
+                <div class="chat-composer-side">
+                  <div class="chat-composer-actions">
+                    <div class="chat-key-picker" id="chatKeyPicker">
+                      <button id="chatKeyPickerBtn" class="chat-pill-btn chat-pill-btn--bare chat-pill-btn--icon" type="button" title="选择 API Key">
+                        <span id="chatKeyPickerValue"></span>
+                      </button>
+                      <div id="chatKeyPickerMenu" class="chat-picker-menu" hidden></div>
+                    </div>
+                    <div class="chat-model-picker" id="chatModelPicker">
+                      <button id="chatModelPickerBtn" class="chat-pill-btn chat-pill-btn--icon chat-pill-btn--bare" type="button" title="选择模型">
+                        <span id="chatModelPickerValue">模型</span>
+                      </button>
+                      <div id="chatModelPickerMenu" class="chat-picker-menu" hidden></div>
+                    </div>
+                  </div>
+                  <span id="chatComposerHint" hidden></span>
+                </div>
+                <button id="chatSendBtn" class="chat-send-btn" type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                  <span>发送</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Keys -->
+        <section class="panel" id="panel-keys">
+          <div class="card glass">
+            <div class="card-header"><h3>新增密钥</h3></div>
+            <div class="modern-form">
+              <div class="floating-input">
+                <input id="newKeyName" type="text" placeholder=" " />
+                <label>Key 名称</label>
+              </div>
+              <div class="input-row">
+                <div class="floating-input">
+                  <input id="newKeyGroup" type="text" placeholder=" " />
+                  <label>分组</label>
+                </div>
+                <div class="floating-input">
+                  <input id="newKeyQuota" type="number" placeholder=" " />
+                  <label>额度</label>
+                </div>
+              </div>
+              <button id="createKeyBtn" class="primary-button">即刻生成</button>
+            </div>
+          </div>
+
+          <div class="filter-group glass">
+            <div class="search-inset">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="keySearchInput" type="text" placeholder="查找密钥..." />
+            </div>
+            <button id="keysResetBtn" class="reset-pill">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+              <span>重置</span>
+            </button>
+          </div>
+
+          <div class="keys-list" id="keysList"></div>
+        </section>
+
+        <!-- Logs -->
+        <section class="panel" id="panel-logs">
+          <div class="search-box glass" style="margin-bottom: 12px;">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="logSearchInput" type="text" placeholder="搜索模型名称..." />
+          </div>
+          <div class="logs-container" id="logsList">
+            <div style="text-align:center; padding:40px; opacity:0.5;">正在加载日志...</div>
+          </div>
+          <button id="loadMoreLogsBtn" class="ghost-button" style="width:100%; margin-top:12px; hidden">加载更多</button>
+        </section>
+
+        <!-- Finance -->
+        <section class="panel" id="panel-finance">
+          <div class="card glass finance-hero">
+            <div class="card-header"><h3>账户充值</h3></div>
+            <div class="amount-scroll" id="amountOptions"></div>
+            <div class="finance-actions">
+              <div class="custom-input-box">
+                <span class="curr">￥</span>
+                <input id="payAmountInput" type="number" placeholder="金额" />
+              </div>
+              <button id="payBtn" class="pay-button"><span>支付</span><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg></button>
+            </div>
+            <div class="method-grid" id="methodOptions"></div>
+            <a id="payLink" class="external-pay-link" href="#" target="_blank" hidden>打开支付收银台 &rarr;</a>
+          </div>
+
+          <div class="section-group">
+            <div class="group-header"><h3>订阅详情</h3><span class="badge" id="plansCount">0</span></div>
+            <div id="subSelf" class="my-sub-card"></div>
+            <div class="plans-stack" id="plansList"></div>
+          </div>
+
+          <div class="section-group">
+            <div class="group-header"><h3>兑换充值码</h3></div>
+            <div class="modern-form" style="flex-direction:row;">
+              <div class="floating-input" style="flex:1; margin:0;"><input id="redeemInput" type="text" placeholder=" " /><label>32位兑换码</label></div>
+              <button id="redeemBtn" class="primary-button" style="width:auto; padding:0 24px;">兑换</button>
+            </div>
+          </div>
+          <div class="section-group">
+            <div class="group-header"><h3>最近充值记录</h3></div>
+            <div id="topupList" class="plans-stack"></div>
+          </div>
+        </section>
+
+        <section class="subpage" id="modelsPage" aria-hidden="true">
+          <div class="subpage-header glass">
+            <button id="closeModelsPageBtn" class="action-circle" type="button" aria-label="返回">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="subpage-title-group">
+              <h2>模型广场</h2>
+              <p>浏览当前账号支持的全部模型</p>
+            </div>
+          </div>
+          <div class="subpage-body">
+            <div class="search-box glass" style="margin-bottom: 16px;">
+              <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input id="modelSearchInput" type="text" placeholder="搜索模型或能力..." />
+            </div>
+            <div class="models-grid" id="modelsList"></div>
+          </div>
+        </section>
+      </div>
+
+      <nav class="capsule-nav glass" id="tabs">
+        <button class="nav-btn active" data-tab="overview">
+          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></svg>
+          <span>首页</span>
+        </button>
+        <button class="nav-btn" data-tab="chat">
+          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10h10"/><path d="M7 14h6"/><path d="M21 12a8 8 0 0 1-8 8H5l-2 2V12a8 8 0 0 1 8-8h2a8 8 0 0 1 8 8Z"/></svg>
+          <span>聊天</span>
+        </button>
+        <button class="nav-btn" data-tab="keys">
+          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3"/><path d="M18 5l3 3"/></svg>
+          <span>密钥</span>
+        </button>
+        <button class="nav-btn" data-tab="logs">
+          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M9 9h1"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
+          <span>明细</span>
+        </button>
+        <button class="nav-btn" data-tab="finance">
+          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M3 10h18"/><path d="M16 15h5"/><path d="M18.5 13v4"/></svg>
+          <span>财务</span>
+        </button>
+        <div class="nav-active-pill"></div>
+      </nav>
+    </main>
+
+    <!-- Key Editor Modal with Advanced Features -->
+    <div class="modal-overlay" id="keyEditorModal" hidden>
+      <div class="modal-mask" data-close-editor="1"></div>
+      <div class="modal-window glass">
+        <div class="modal-header">
+          <h3>编辑高阶密钥</h3>
+          <button id="keyEditorCloseBtn" class="close-circle"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div class="modal-content">
+          <div id="keyEditorMeta" class="key-id-tag">ID: --</div>
+          <div class="modern-form">
+            <div class="floating-input"><input id="editorName" type="text" placeholder=" " /><label>名称</label></div>
+            <div class="input-row">
+              <div class="floating-input"><input id="editorGroup" type="text" placeholder=" " /><label>分组</label></div>
+              <div class="floating-input"><input id="editorQuota" type="number" placeholder=" " /><label>剩余额度</label></div>
+            </div>
+            <div class="floating-input"><input id="editorExpire" type="number" placeholder=" " /><label>过期时间 (Unix, -1 永久)</label></div>
+            
+            <div class="toggles-grid">
+              <label class="ios-toggle">
+                <div style="display:flex;flex-direction:column;"><span>启用模型限制</span><span style="font-size:10px;opacity:0.6;font-weight:400">仅允许调用下方指定的模型</span></div>
+                <input id="editorModelLimitToggle" type="checkbox" />
+                <div class="track"><div class="thumb"></div></div>
+              </label>
+            </div>
+            <div class="floating-input" id="editorModelLimitBox" hidden>
+              <textarea id="editorModelLimits" placeholder=" "></textarea>
+              <label>可用模型 (逗号分隔)</label>
+            </div>
+            <div class="floating-input">
+              <textarea id="editorAllowIps" placeholder=" "></textarea>
+              <label>IP 白名单 (一行一个)</label>
+            </div>
+
+            <div class="toggles-grid">
+              <label class="ios-toggle"><span>无限额度</span><input id="editorUnlimited" type="checkbox" /><div class="track"><div class="thumb"></div></div></label>
+              <label class="ios-toggle"><span>启用该 Key</span><input id="editorStatus" type="checkbox" checked /><div class="track"><div class="thumb"></div></div></label>
+            </div>
+            
+            <div class="copy-field">
+              <input id="editorKeyValue" type="text" readonly />
+              <button id="editorCopyKeyBtn" class="copy-pill">一键复制</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer"><button id="editorSaveBtn" class="primary-button">保存并生效</button></div>
+      </div>
+    </div>
+
+    <!-- Affiliate Modal -->
+    <div class="modal-overlay" id="affiliateModal" hidden>
+      <div class="modal-mask" data-close-affiliate="1"></div>
+      <div class="modal-window glass" style="border-radius: 32px; margin: auto 24px; padding: 32px 24px; text-align:center;">
+        <div class="icon-gradient-sphere" style="width:64px;height:64px;position:relative;margin:0 auto 20px;"></div>
+        <svg style="position:absolute;top:48px;left:50%;transform:translate(-50%,0);color:white;" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <h3 style="font-size:24px;font-weight:800;margin-bottom:8px;">邀请奖励计划</h3>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;line-height:1.6;">当前可划转邀请额度 <strong id="affQuotaText" style="color:var(--text)">--</strong>，累计邀请奖励 <strong id="affHistoryText" style="color:var(--accent)">--</strong>。</p>
+        
+        <div style="background:var(--bg-secondary);padding:16px;border-radius:16px;margin-bottom:24px;text-align:left;">
+          <div style="font-size:11px;font-weight:800;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;">您的专属邀请链接</div>
+          <div style="display:flex;gap:8px;">
+            <input id="affLinkInput" type="text" readonly style="flex:1;background:transparent;border:none;font-weight:700;font-size:13px;color:var(--text);outline:none;font-family:monospace;" />
+            <button id="affCopyBtn" class="copy-pill" style="height:32px;">复制</button>
+          </div>
+        </div>
+        <button id="affCloseBtn" class="primary-button" style="background:var(--bg-secondary);color:var(--text);box-shadow:none;">关闭</button>
+      </div>
+    </div>
+
+    <div id="toast" class="toast-hub"></div>
+    <script type="module" src="/miniapp/app.js"></script>
+  </body>
+</html>
