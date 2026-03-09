@@ -1063,7 +1063,6 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
   font-size: 11px;
   line-height: 1.5;
   color: var(--text-secondary);
-  word-break: break-all;
 }
 .api-endpoint-subtext-label {
   display: block;
@@ -1072,8 +1071,10 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 .api-endpoint-subtext-value {
   display: block;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 500;
   font-size: 10px;
+  line-height: 1.55;
+  word-break: break-all;
 }
 .api-docs-btn {
   min-width: 82px;
