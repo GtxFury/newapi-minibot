@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <meta name="color-scheme" content="light dark" />
     <title>BilAPI - Ultimate</title>
-    <link rel="stylesheet" href="/miniapp/styles.css?v=20260309-113539" />
+    <link rel="stylesheet" href="/miniapp/styles.css?v=20260309-123210" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
@@ -645,21 +645,23 @@
     <!-- Affiliate Modal -->
     <div class="modal-overlay" id="affiliateModal" hidden>
       <div class="modal-mask" data-close-affiliate="1"></div>
-      <div class="modal-window glass" style="border-radius: 32px; margin: auto 24px; padding: 32px 24px; text-align:center;">
-        <div class="icon-gradient-sphere" style="width:64px;height:64px;position:relative;margin:0 auto 20px;"></div>
-        <svg style="position:absolute;top:48px;left:50%;transform:translate(-50%,0);color:white;" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <h3 style="font-size:24px;font-weight:800;margin-bottom:8px;">邀请奖励计划</h3>
-        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;line-height:1.6;">当前可划转邀请额度 <strong id="affQuotaText" style="color:var(--text)">--</strong>，累计邀请奖励 <strong id="affHistoryText" style="color:var(--accent)">--</strong>。</p>
+      <div class="modal-window glass affiliate-modal-window">
+        <div class="icon-gradient-sphere affiliate-modal-glow"></div>
+        <svg class="affiliate-modal-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <h3 class="affiliate-modal-title">邀请奖励计划</h3>
+        <p class="affiliate-modal-copy">当前可划转邀请额度 <strong id="affQuotaText" style="color:var(--text)">--</strong>，累计邀请奖励 <strong id="affHistoryText" style="color:var(--accent)">--</strong>。</p>
         
-        <div style="background:var(--bg-secondary);padding:16px;border-radius:16px;margin-bottom:24px;text-align:left;">
-          <div style="font-size:11px;font-weight:800;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;">您的专属邀请链接</div>
-          <div style="display:flex;gap:8px;">
-            <input id="affLinkInput" type="text" readonly style="flex:1;background:transparent;border:none;font-weight:700;font-size:13px;color:var(--text);outline:none;font-family:monospace;" />
-            <button id="affGenerateBtn" class="copy-pill" style="height:32px;">生成</button>
-            <button id="affCopyBtn" class="copy-pill" style="height:32px;">复制</button>
+        <div class="affiliate-link-card">
+          <div class="affiliate-link-label">您的专属邀请链接</div>
+          <div class="affiliate-link-row">
+            <input id="affLinkInput" type="text" readonly class="affiliate-link-input" />
+            <div class="affiliate-link-actions">
+              <button id="affGenerateBtn" class="copy-pill affiliate-link-btn">生成</button>
+              <button id="affCopyBtn" class="copy-pill affiliate-link-btn">复制</button>
+            </div>
           </div>
         </div>
-        <button id="affCloseBtn" class="primary-button" style="background:var(--bg-secondary);color:var(--text);box-shadow:none;">关闭</button>
+        <button id="affCloseBtn" class="primary-button affiliate-close-btn">关闭</button>
       </div>
     </div>
 
@@ -745,6 +747,6 @@
     </div>
 
     <div id="toast" class="toast-hub"></div>
-    <script type="module" src="/miniapp/app.js?v=20260309-113539"></script>
+    <script type="module" src="/miniapp/app.js?v=20260309-123210"></script>
   </body>
 </html>

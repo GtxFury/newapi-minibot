@@ -1327,13 +1327,14 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
 
     if (method === "GET" && pathname === "/miniapi/affiliate") {
       const data = await apiClient.getAffiliate(auth);
-      const affCode = String(data?.aff_code || data?.code || "").trim();
+      const affiliatePayload = data && typeof data === "object" && !Array.isArray(data) ? data : null;
+      const affCode = String(affiliatePayload?.aff_code || affiliatePayload?.code || data || "").trim();
       const inviteUrl = affCode ? `${config.baseUrl}/register?aff=${encodeURIComponent(affCode)}` : "";
       sendJson(res, 200, {
         success: true,
         data: {
-          ...(data && typeof data === "object" ? data : {}),
-          aff_code: affCode || data?.aff_code || data?.code || "",
+          ...(affiliatePayload || {}),
+          aff_code: affCode,
           invite_url: inviteUrl
         }
       });
