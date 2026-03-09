@@ -1,6 +1,6 @@
 # bil-bot
 
-面向 BilAPI/NewAPI 的 Telegram Bot（MVP）：
+面向 NewAPI 兼容站点的 Telegram Bot（MVP）：
 - 充值下单（`/pay` 或 `/topup`）
 - 订阅套餐（`/subplans` `/subbuy` `/mysub` `/subpref`）
 - 兑换码充值（`/redeem`，底层 `/api/user/topup`）
@@ -14,7 +14,7 @@
 
 1. Node.js >= 20
 2. 在 Telegram 中通过 `@BotFather` 创建 bot，拿到 `BOT_TOKEN`
-3. 准备 NewAPI/BilAPI 的访问令牌（Access Token）
+3. 准备 NewAPI 兼容站点的访问令牌（Access Token）
 
 ## 2. 配置
 
@@ -150,4 +150,4 @@ npm run start
 - `POST /api/user/amount`
 - `POST /api/user/pay`
 
-说明：不同站点（NewAPI 实例）对请求字段可能有定制差异。若你的 bilapi 字段名不同，可在 `src/newapiClient.js` 中按实际接口做适配。
+说明：不同站点（NewAPI 实例）对请求字段可能有定制差异。若你的站点字段名不同，可在 `src/newapiClient.js` 中按实际接口做适配。
