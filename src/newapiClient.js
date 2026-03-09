@@ -232,6 +232,13 @@ export class NewApiClient {
     });
   }
 
+  getStatus() {
+    return this.request({
+      method: "GET",
+      path: "/api/status"
+    });
+  }
+
   getUserGroups(auth) {
     return this.request({
       method: "GET",

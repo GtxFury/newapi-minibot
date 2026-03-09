@@ -191,6 +191,7 @@ const appState = {
   models: [],
   topupInfo: null,
   topupRecords: null,
+  apiInfo: null,
   keyGroups: [],
   expandedPlanId: null,
   paymentMethods: [],
@@ -252,6 +253,10 @@ const els = {
   usageRangeButtons: document.getElementById("usageRangeButtons"),
   modelsList: document.getElementById("modelsList"),
   modelSearchInput: document.getElementById("modelSearchInput"),
+  apiEndpointValue: document.getElementById("apiEndpointValue"),
+  apiEndpointCopyBtn: document.getElementById("apiEndpointCopyBtn"),
+  openaiChatEndpointText: document.getElementById("openaiChatEndpointText"),
+  apiDocsBtn: document.getElementById("apiDocsBtn"),
   newKeyName: document.getElementById("newKeyName"),
   newKeyGroup: document.getElementById("newKeyGroup"),
   newKeyGroupSelect: document.getElementById("newKeyGroupSelect"),
@@ -840,6 +845,22 @@ function normalizeAffiliateData(data) {
   };
 }
 
+function normalizeApiInfo(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return {
+      endpoint: "",
+      openaiChatEndpoint: "",
+      docsUrl: ""
+    };
+  }
+
+  return {
+    endpoint: String(data.endpoint || data.base_url || "").trim(),
+    openaiChatEndpoint: String(data.openai_chat_endpoint || data.chat_endpoint || "").trim(),
+    docsUrl: String(data.docs_url || data.docs_link || "").trim()
+  };
+}
+
 function formatPlanQuotaValue(plan) {
   const quota = Number(plan?.quota);
   if (!Number.isFinite(quota) || quota <= 0) {
@@ -929,6 +950,33 @@ function openPayLink(url) {
     tg.openLink(payUrl);
   } else {
     window.open(payUrl, "_blank", "noopener");
+  }
+}
+
+function openExternalLink(url) {
+  const targetUrl = String(url || "").trim();
+  if (!targetUrl) return;
+
+  if (tg?.openLink) {
+    tg.openLink(targetUrl);
+  } else {
+    window.open(targetUrl, "_blank", "noopener");
+  }
+}
+
+function renderApiInfo() {
+  const apiInfo = appState.apiInfo || {};
+
+  if (els.apiEndpointValue) {
+    els.apiEndpointValue.textContent = apiInfo.endpoint || "--";
+  }
+  if (els.openaiChatEndpointText) {
+    els.openaiChatEndpointText.textContent = apiInfo.openaiChatEndpoint || "--";
+  }
+  if (els.apiDocsBtn) {
+    const available = Boolean(apiInfo.docsUrl);
+    els.apiDocsBtn.disabled = !available;
+    els.apiDocsBtn.classList.toggle("is-disabled", !available);
   }
 }
 
@@ -2815,6 +2863,7 @@ async function loadData() {
     appState.keyGroups = normalizeKeyGroups(d.user_groups);
     appState.topupInfo = d.topup_info || null;
     appState.topupRecords = toArray(d.topup_records);
+    appState.apiInfo = normalizeApiInfo(d.api_info);
     
     // Non-blocking fetch for models and affiliate
     loadModelsShared({ force: true }).catch(() => {});
@@ -2837,6 +2886,7 @@ async function loadData() {
     }
     
     renderNewKeyGroups();
+    renderApiInfo();
     renderOverview(); renderKeys(); renderFinance(); renderProfile(); renderCreate();
     if (appState.chatInitialized) {
       loadChatBootstrap(true);
@@ -2851,9 +2901,11 @@ async function loadData() {
     appState.subSelf = null;
     appState.keys = [];
     appState.keyGroups = [];
+    appState.apiInfo = null;
     renderOverview();
     renderKeys();
     renderProfile();
+    renderApiInfo();
     if (message.includes("未绑定凭证")) {
       toast("当前 Telegram 还没开号，请到“我的”里一键开通", "error");
       if (els.authBadge) els.authBadge.textContent = "未开号";
@@ -3185,6 +3237,23 @@ function bindEvents() {
   els.modelSearchInput.addEventListener("input", debounce(e => { appState.modelSearch = e.target.value; renderModels(); }, 300));
   els.keySearchInput.addEventListener("input", debounce(e => { appState.keyFilter.search = e.target.value; renderKeys(); }, 300));
   els.keysResetBtn.addEventListener("click", () => { els.keySearchInput.value = ""; appState.keyFilter.search = ""; renderKeys(); });
+  els.apiEndpointCopyBtn?.addEventListener("click", async () => {
+    const endpoint = String(appState.apiInfo?.endpoint || "").trim();
+    if (!endpoint) {
+      toast("当前没有可复制的 API 端点", "error");
+      return;
+    }
+    await navigator.clipboard.writeText(endpoint);
+    toast("已复制 API 端点");
+  });
+  els.apiDocsBtn?.addEventListener("click", () => {
+    const docsUrl = String(appState.apiInfo?.docsUrl || "").trim();
+    if (!docsUrl) {
+      toast("当前站点未配置文档地址", "error");
+      return;
+    }
+    openExternalLink(docsUrl);
+  });
   els.newKeyUnlimitedToggle?.addEventListener("change", () => { syncNewKeyForm(); });
   els.newKeyGroupSelectBtn?.addEventListener("click", (event) => {
     event.stopPropagation();

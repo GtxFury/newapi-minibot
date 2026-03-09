@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
     <meta name="color-scheme" content="light dark" />
     <title>BilAPI - Ultimate</title>
-    <link rel="stylesheet" href="/miniapp/styles.css?v=20260309-123210" />
+    <link rel="stylesheet" href="/miniapp/styles.css?v=20260309-125015" />
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
@@ -396,6 +396,17 @@
           <div class="card glass">
             <div class="card-header"><h3>新增密钥</h3></div>
             <div class="modern-form">
+              <div class="api-endpoint-card">
+                <div class="api-endpoint-main">
+                  <div class="api-endpoint-label">API 端点</div>
+                  <div class="api-endpoint-row">
+                    <code id="apiEndpointValue" class="api-endpoint-value">--</code>
+                    <button id="apiEndpointCopyBtn" class="copy-pill api-endpoint-copy-btn" type="button">复制</button>
+                  </div>
+                  <p class="api-endpoint-subtext">OpenAI Chat 地址：<span id="openaiChatEndpointText">--</span></p>
+                </div>
+                <button id="apiDocsBtn" class="ghost-button api-docs-btn" type="button">查看文档</button>
+              </div>
               <div class="floating-input">
                 <input id="newKeyName" type="text" placeholder=" " />
                 <label>Key 名称</label>
@@ -747,6 +758,6 @@
     </div>
 
     <div id="toast" class="toast-hub"></div>
-    <script type="module" src="/miniapp/app.js?v=20260309-123210"></script>
+    <script type="module" src="/miniapp/app.js?v=20260309-125015"></script>
   </body>
 </html>

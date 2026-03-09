@@ -900,7 +900,8 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
         apiClient.listTokens(auth),
         apiClient.getUserGroups(auth),
         apiClient.getTopupInfo(auth),
-        apiClient.listMyTopups(auth)
+        apiClient.listMyTopups(auth),
+        apiClient.getStatus()
       ]);
 
       const readResult = (item) => (item.status === "fulfilled" ? item.value : null);
@@ -910,6 +911,8 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
       const keys = toList(readResult(tasks[4]));
       const userGroups = readResult(tasks[5]);
       const topupRecords = toList(readResult(tasks[7]));
+      const statusInfo = readResult(tasks[8]);
+      const docsUrl = String(statusInfo?.docs_link || "").trim();
 
       sendJson(res, 200, {
         success: true,
@@ -922,7 +925,12 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
           keys,
           user_groups: userGroups,
           topup_info: readResult(tasks[6]),
-          topup_records: topupRecords
+          topup_records: topupRecords,
+          api_info: {
+            endpoint: config.baseUrl,
+            openai_chat_endpoint: `${config.baseUrl}/v1/chat/completions`,
+            docs_url: docsUrl
+          }
         },
         errors: {
           me: readError(tasks[0]),
@@ -932,7 +940,8 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
           keys: readError(tasks[4]),
           user_groups: readError(tasks[5]),
           topup_info: readError(tasks[6]),
-          topup_records: readError(tasks[7])
+          topup_records: readError(tasks[7]),
+          api_info: readError(tasks[8])
         }
       });
       return;
