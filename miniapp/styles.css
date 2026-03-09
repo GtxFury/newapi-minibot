@@ -1060,18 +1060,25 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 }
 .api-endpoint-subtext {
   margin: 10px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--text-secondary);
   word-break: break-all;
 }
-.api-endpoint-subtext span {
+.api-endpoint-subtext-label {
+  display: block;
+  margin-bottom: 4px;
+}
+.api-endpoint-subtext-value {
+  display: block;
   color: var(--text);
   font-weight: 700;
+  font-size: 10px;
 }
 .api-docs-btn {
-  min-width: 96px;
-  padding-inline: 16px;
+  min-width: 82px;
+  padding: 10px 12px;
+  font-size: 13px;
   flex-shrink: 0;
 }
 .api-docs-btn.is-disabled {
