@@ -2694,6 +2694,40 @@ body { font-family: var(--font-sans); background: var(--bg); color: var(--text);
 
 /* Utilities */
 .badge { background: var(--accent); color: white; padding: 3px 10px; border-radius: 8px; font-size: 10px; font-weight: 800; }
+.badge--success { background: var(--success); color: #fff; }
+.badge--warning { background: #ff9f0a; color: #fff; }
+.badge--danger { background: var(--danger); color: #fff; }
+.badge--neutral { background: #8e8e93; color: #fff; }
+.topup-record-card {
+  align-items: flex-start;
+}
+.topup-record-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+.topup-record-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.topup-record-head strong {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--text);
+}
+.topup-record-meta,
+.topup-record-time {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
 .glass { backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
 [hidden] { display: none !important; }
 

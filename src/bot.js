@@ -806,50 +806,7 @@ export function createBot({ config, store, apiClient }) {
   }
 
   bot.start(async (ctx) => {
-    const startLines = [
-      "BilAPI/NewAPI Telegram Bot 已启动。",
-      "",
-      "常用命令：",
-      "/menu - 打开功能菜单"
-    ];
-    if (oneClickRegisterEnabled) {
-      startLines.push("/register - 一键注册并绑定 Telegram");
-    }
-    if (config.miniAppEnabled) {
-      startLines.push("/miniapp - 打开 Mini App");
-    }
-    startLines.push(
-      "/settoken <token> <newapi_user_id> - 绑定凭证",
-      "/me - 查看账户",
-      "/usage [days<=30] - 查看用量",
-      "/subplans - 查看订阅套餐",
-      "/mysub - 查看我的订阅",
-      "/subbuy <plan_id> [payment_method] - 购买套餐（默认易支付）",
-      "/subpref <subscription_first|wallet_first|subscription_only|wallet_only> - 扣费策略",
-      "/keys - 列出 API Key",
-      "/keygroups - 查看分组统计",
-      "/keydetail <id> - 查看 Key 详情",
-      "/newkey <name> [quota] [expired_unix] [unlimited] - 创建 Key",
-      "/keygroup <id> <group> - 设置分组",
-      "/keyrename <id> <name> - 修改名称",
-      "/keystatus <id> <enable|disable> - 启用/禁用",
-      "/keyquota <id> <quota|unlimited> - 修改额度",
-      "/keyexpire <id> <unix|-1> - 修改到期时间",
-      "/keyips <id> <ip1,ip2|clear> - 设置 IP 白名单",
-      "/keymodels <id> <off|model1,model2> - 设置模型限制",
-      "/showkey <id> - 查看指定 Key 明文",
-      "/delkey <id> - 删除 Key",
-      "/redeem <code> - 兑换充值码（/api/user/topup）",
-      "/topupinfo - 查看充值方式",
-      "/amount <amount> - 计算支付金额",
-      "/pay <amount> [payment_method] - 发起支付（可菜单选方式）",
-      "/mytopups - 查看充值记录"
-    );
-
-    await safeReply(
-      ctx,
-      startLines.join("\n")
-    );
+    await safeReply(ctx, "欢迎使用BilAPI，点击左下角的用户面板开始使用。");
     await ctx.reply("请选择操作：", menuKeyboard());
   });
 
@@ -858,59 +815,7 @@ export function createBot({ config, store, apiClient }) {
   });
 
   bot.command("help", async (ctx) => {
-    const helpLines = [
-      "命令说明",
-      "/settoken <token> <newapi_user_id> 绑定个人凭证",
-      "/cleartoken 清除个人凭证"
-    ];
-    if (config.miniAppEnabled) {
-      helpLines.push("/miniapp 打开 Mini App（支持深色/浅色主题）");
-    }
-    if (oneClickRegisterEnabled) {
-      helpLines.push("/register 一键注册并绑定 Telegram（点击一次自动完成）");
-    }
-    helpLines.push(
-      "/me 查看账户信息",
-      "/usage [days] 查看用量（默认 30 天，最大 30）",
-      "/subplans 查看订阅套餐",
-      "（支持按钮：选套餐 -> 选易支付方式 -> 下单）",
-      "/mysub 查看我的订阅",
-      "/subbuy <plan_id> [payment_method] 购买套餐（默认易支付）",
-      "示例: /subbuy 3",
-      "示例: /subbuy 3 alipay",
-      "/subpref <subscription_first|wallet_first|subscription_only|wallet_only>",
-      "示例: /subpref wallet_first",
-      "/keys 列出 API Keys",
-      "/keygroups 查看分组统计",
-      "/keydetail <id> 查看 Key 详情",
-      "（支持按钮：快速创建、点选删除）",
-      "/newkey <name> [quota] [expired_unix] [unlimited]",
-      "示例: /newkey dev-key 500000 1767225600 false",
-      "/keygroup <id> <group> 设置分组",
-      "示例: /keygroup 12 svip",
-      "/keyrename <id> <name> 修改名称",
-      "/keystatus <id> <enable|disable> 启用/禁用",
-      "/keyquota <id> <quota|unlimited> 修改额度",
-      "/keyexpire <id> <unix|-1> 修改到期时间",
-      "/keyips <id> <ip1,ip2|clear> 设置 IP 白名单",
-      "示例: /keyips 12 1.1.1.1,2.2.2.2",
-      "/keymodels <id> <off|model1,model2> 设置模型限制",
-      "示例: /keymodels 12 gpt-4o,gpt-4.1-mini",
-      "/showkey <id> 查看指定 Key 明文",
-      "/delkey <id>",
-      "/redeem <code> 兑换充值码",
-      "/topupinfo 查看充值配置",
-      "/amount <amount> 计算应付金额",
-      "/pay <amount> [payment_method] 发起支付（可菜单化）",
-      "示例: /pay 10 alipay",
-      "示例: /pay 10",
-      "/mytopups 查看充值记录"
-    );
-
-    await safeReply(
-      ctx,
-      helpLines.join("\n")
-    );
+    await safeReply(ctx, "欢迎使用BilAPI，点击左下角的用户面板开始使用。");
   });
 
   bot.command("miniapp", async (ctx) => {
@@ -1708,7 +1613,7 @@ export function createBot({ config, store, apiClient }) {
 
   bot.action("menu_help", async (ctx) => {
     await ctx.answerCbQuery();
-    await safeReply(ctx, "发送 /help 查看全部命令。");
+    await safeReply(ctx, "欢迎使用BilAPI，点击左下角的用户面板开始使用。");
   });
 
   bot.action("menu_miniapp", async (ctx) => {

@@ -1327,7 +1327,16 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
 
     if (method === "GET" && pathname === "/miniapi/affiliate") {
       const data = await apiClient.getAffiliate(auth);
-      sendJson(res, 200, { success: true, data });
+      const affCode = String(data?.aff_code || data?.code || "").trim();
+      const inviteUrl = affCode ? `${config.baseUrl}/register?aff=${encodeURIComponent(affCode)}` : "";
+      sendJson(res, 200, {
+        success: true,
+        data: {
+          ...(data && typeof data === "object" ? data : {}),
+          aff_code: affCode || data?.aff_code || data?.code || "",
+          invite_url: inviteUrl
+        }
+      });
       return;
     }
 

@@ -409,6 +409,28 @@ function formatDate(ts) {
   return new Date(ts * 1000).toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+function normalizeTopupStatus(status) {
+  const key = String(status || "").trim().toLowerCase();
+  if (["success", "paid", "done", "completed", "complete", "succeeded"].includes(key)) {
+    return { label: "已支付", tone: "success" };
+  }
+  if (["pending", "processing", "created", "unpaid", "wait"].includes(key)) {
+    return { label: "待支付", tone: "warning" };
+  }
+  if (["expired", "closed", "cancel", "cancelled", "canceled", "failed"].includes(key)) {
+    return { label: "已失效", tone: "danger" };
+  }
+  return { label: key ? String(status) : "状态未知", tone: "neutral" };
+}
+
+function getTopupCreatedTime(item) {
+  return Number(item?.create_time || item?.created_at || item?.createdAt || 0);
+}
+
+function getTopupCompletedTime(item) {
+  return Number(item?.complete_time || item?.completed_at || item?.updated_at || 0);
+}
+
 function extractErrorText(value) {
   if (typeof value === "string") {
     return value.trim();
@@ -770,9 +792,11 @@ function normalizePaymentMethods(info) {
 function normalizeAffiliateData(data) {
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const affCode = String(data.aff_code || data.code || "").trim();
+    const inviteUrl = String(data.invite_url || data.aff_link || data.link || "").trim();
     return {
       raw: data,
       affCode,
+      inviteUrl,
       quota: Number(data.quota || data.history_amount || 0),
       ratio: Number(data.ratio || 0)
     };
@@ -782,6 +806,7 @@ function normalizeAffiliateData(data) {
   return {
     raw: affCode ? { aff_code: affCode } : null,
     affCode,
+    inviteUrl: "",
     quota: 0,
     ratio: 0
   };
@@ -1236,6 +1261,34 @@ async function openMiniAppAccount(button) {
   }
 }
 
+function focusUsageChart() {
+  const scrollEl = els.usageBlock?.querySelector(".usage-chart-scroll");
+  if (!scrollEl) return;
+
+  const activeBars = Array.from(scrollEl.querySelectorAll('.usage-bar-wrapper[data-has-usage="true"]'));
+  if (!activeBars.length) {
+    scrollEl.scrollLeft = 0;
+    return;
+  }
+
+  const firstBar = activeBars[0];
+  const lastBar = activeBars[activeBars.length - 1];
+  const activeLeft = firstBar.offsetLeft;
+  const activeRight = lastBar.offsetLeft + lastBar.offsetWidth;
+  const activeWidth = activeRight - activeLeft;
+  const viewportWidth = scrollEl.clientWidth;
+  const maxScroll = Math.max(0, scrollEl.scrollWidth - viewportWidth);
+
+  let targetLeft = 0;
+  if (activeWidth <= viewportWidth * 0.9) {
+    targetLeft = activeLeft + activeWidth / 2 - viewportWidth / 2;
+  } else {
+    targetLeft = activeRight - viewportWidth + 24;
+  }
+
+  scrollEl.scrollLeft = Math.max(0, Math.min(maxScroll, targetLeft));
+}
+
 function renderUsageChart() {
   const usage = appState.usage || [];
   els.usageRangeButtons?.querySelectorAll(".seg-btn").forEach(b => b.classList.toggle("active", Number(b.dataset.days) === appState.usageDays));
@@ -1387,7 +1440,7 @@ function renderUsageChart() {
               const totalHeight = item.totalQuota > 0 ? Math.max(10, (item.totalQuota / maxQuota) * 100) : 0;
               const amount = formatQuotaAsUsd(item.totalQuota);
               return `
-                <div class="usage-bar-wrapper" title="${item.label} · ${amount} · ${item.totalCount.toLocaleString("zh-CN")} 次">
+                <div class="usage-bar-wrapper" data-has-usage="${item.totalQuota > 0 ? "true" : "false"}" title="${item.label} · ${amount} · ${item.totalCount.toLocaleString("zh-CN")} 次">
                   ${denseChart ? "" : `<span class="usage-value">${amount}</span>`}
                   <div class="usage-bar-track">
                     <div class="usage-stack" style="height:${totalHeight}%">
@@ -1418,6 +1471,9 @@ function renderUsageChart() {
       </div>
     </div>
   `;
+  requestAnimationFrame(() => {
+    focusUsageChart();
+  });
 }
 
 function renderCreate() {
@@ -1909,7 +1965,34 @@ function renderFinance() {
     `;
   }).join("");
   if (els.topupList) {
-    els.topupList.innerHTML = (appState.topupRecords || []).slice(0, 10).map(r => `<div class="item-card" style="font-size:13px;"><span>￥${r.amount} · ${r.payment_method}</span><span style="opacity:0.6">${formatDate(r.created_at)}</span></div>`).join("") || '<div class="item-card" style="opacity:0.6; font-size:13px; justify-content:center;">暂无充值记录</div>';
+    els.topupList.innerHTML = (appState.topupRecords || []).slice(0, 10).map((r) => {
+      const status = normalizeTopupStatus(r.status);
+      const amount = Number(r?.amount || 0);
+      const money = Number(r?.money || 0);
+      const createdTime = getTopupCreatedTime(r);
+      const completedTime = getTopupCompletedTime(r);
+      const orderNo = String(r?.trade_no || r?.order_no || r?.id || "").trim();
+      const payMethod = getPaymentMeta(r?.payment_method).label;
+      const amountText = Number.isFinite(money) && money > 0 ? `￥${money}` : (Number.isFinite(amount) ? `￥${amount}` : "￥0");
+      return `
+        <div class="item-card topup-record-card">
+          <div class="topup-record-main">
+            <div class="topup-record-head">
+              <strong>${escapeHtml(amountText)}</strong>
+              <span class="badge badge--${status.tone}">${escapeHtml(status.label)}</span>
+            </div>
+            <div class="topup-record-meta">
+              <span>${escapeHtml(payMethod)}</span>
+              <span>订单号 ${escapeHtml(orderNo || "-")}</span>
+            </div>
+            <div class="topup-record-time">
+              <span>创建于 ${escapeHtml(createdTime ? formatFullDate(createdTime) : "-")}</span>
+              <span>${escapeHtml(status.label === "已支付" && completedTime ? `完成于 ${formatFullDate(completedTime)}` : status.label === "待支付" ? "当前仍待支付" : completedTime ? `更新于 ${formatFullDate(completedTime)}` : "订单未完成")}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("") || '<div class="item-card" style="opacity:0.6; font-size:13px; justify-content:center;">暂无充值记录</div>';
   }
 }
 
@@ -2692,8 +2775,7 @@ async function loadData() {
       if(affiliate.affCode || affiliate.raw) {
         els.affQuotaText.textContent = formatQuotaAsUsd(affQuota);
         els.affHistoryText.textContent = formatQuotaAsUsd(affHistoryQuota);
-        const code = affiliate.affCode;
-        els.affLinkInput.value = code ? `${window.location.origin}/register?aff=${code}` : "未生成";
+        els.affLinkInput.value = affiliate.inviteUrl || "未生成";
       } else {
         els.affQuotaText.textContent = "$0.00";
         els.affHistoryText.textContent = "$0.00";
