@@ -200,6 +200,23 @@
                 </span>
                 <span>模型</span>
               </button>
+              <button class="quick-link" data-nav-tab="logs" type="button">
+                <span class="quick-link-icon" aria-hidden="true">
+                  <svg class="quick-link-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="url(#quickLogsGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <defs>
+                      <linearGradient id="quickLogsGrad" x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#0f172a" />
+                        <stop offset="1" stop-color="#475569" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                    <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z" />
+                    <path d="M9 13h6" />
+                    <path d="M9 17h6" />
+                  </svg>
+                </span>
+                <span>明细</span>
+              </button>
             </div>
           </div>
 
@@ -292,6 +309,88 @@
           </div>
         </section>
 
+        <section class="panel panel-create" id="panel-create" hidden>
+          <div class="create-shell" id="createShell" data-create-mode="video">
+            <div class="create-hero glass">
+              <div class="create-hero-copy">
+                <span class="create-kicker">Creator Studio</span>
+                <h2>一句提示词，直接进入出片状态。</h2>
+                <p>界面先对齐 Sora 和短视频创作流，先把预览、选模、构图和生成工作台打磨完整。</p>
+                <div class="create-hero-meta">
+                  <span>沉浸预览</span>
+                  <span>多模型创作</span>
+                  <span>分镜工作台</span>
+                </div>
+              </div>
+              <div class="create-mode-tabs" id="createModeTabs">
+                <button class="create-mode-btn active" data-mode="video" type="button">视频</button>
+                <button class="create-mode-btn" data-mode="image" type="button">图片</button>
+              </div>
+              <button id="openCreateWorksBtn" class="create-works-entry" type="button">我的作品</button>
+            </div>
+
+            <div class="create-dock glass">
+              <div class="create-models">
+                <div class="create-section-head">
+                  <strong>创作模型</strong>
+                  <span id="createCapabilityHint">当前展示视频创作能力</span>
+                </div>
+                <div class="create-model-chip-row" id="createModelChips"></div>
+              </div>
+
+              <div class="create-side-rail" id="createSideRail">
+                <button class="create-rail-btn active" data-style="cinematic" type="button">电影感</button>
+                <button class="create-rail-btn" data-style="fashion" type="button">大片</button>
+                <button class="create-rail-btn" data-style="anime" type="button">动漫</button>
+                <button class="create-rail-btn" data-style="product" type="button">产品</button>
+              </div>
+
+              <div class="create-prompt-box">
+                <textarea id="createPromptInput" rows="3" placeholder="描述你的画面、镜头、人物、动作与氛围，比如：深夜雨巷中，镜头低机位推进，一位银色风衣女孩回头看向镜头，霓虹反射在积水里，胶片颗粒感。"></textarea>
+                <div class="create-prompt-footer">
+                  <span>支持镜头语言、角色、动作、布光、情绪和字幕描述</span>
+                  <span>更完整的 prompt 会得到更稳定的结果</span>
+                </div>
+              </div>
+
+              <div class="create-config-grid">
+                <div class="create-config-card">
+                  <span class="create-config-label">画幅</span>
+                  <div class="create-chip-row" id="createAspectChips"></div>
+                </div>
+                <div class="create-config-card">
+                  <span class="create-config-label">时长</span>
+                  <div class="create-chip-row" id="createDurationChips"></div>
+                </div>
+              </div>
+
+              <div class="create-actions">
+                <button id="createStoryboardBtn" class="ghost-button" type="button">生成分镜</button>
+                <button id="createGenerateBtn" class="primary-button create-generate-btn" type="button">开始创作</button>
+              </div>
+            </div>
+
+            <div class="create-scroll-cue" id="createScrollCue">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m12 5 0 14" />
+                <path d="m19 12-7 7-7-7" />
+              </svg>
+              <span id="createScrollCueText">向下滑动进入视频流</span>
+            </div>
+
+            <div class="create-stage">
+              <div class="create-stage-head">
+                <div>
+                  <strong id="createStageTitle">视频流</strong>
+                  <span id="createStageSubtitle">继续下滑浏览完整视频样片</span>
+                </div>
+                <button class="create-stage-pill" type="button">For You</button>
+              </div>
+              <div class="create-preview-stack" id="createPreviewStack"></div>
+            </div>
+          </div>
+        </section>
+
         <!-- Keys -->
         <section class="panel" id="panel-keys">
           <div class="card glass">
@@ -303,27 +402,54 @@
               </div>
               <div class="input-row">
                 <div class="floating-input">
-                  <input id="newKeyGroup" type="text" placeholder=" " />
+                  <select id="newKeyGroup">
+                    <option value="" selected>默认分组</option>
+                  </select>
                   <label>分组</label>
                 </div>
+                <div class="floating-input custom-select" id="newKeyExpireSelect">
+                  <input id="newKeyExpirePreset" type="hidden" value="never" />
+                  <button id="newKeyExpireSelectBtn" class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                    <span id="newKeyExpireSelectLabel">永久有效</span>
+                  </button>
+                  <label>有效期</label>
+                  <div class="custom-select-menu" id="newKeyExpireSelectMenu" role="listbox" hidden>
+                    <button class="custom-select-option" type="button" data-value="never" role="option">永久有效</button>
+                    <button class="custom-select-option" type="button" data-value="1d" role="option">1 天</button>
+                    <button class="custom-select-option" type="button" data-value="7d" role="option">7 天</button>
+                    <button class="custom-select-option" type="button" data-value="30d" role="option">30 天</button>
+                    <button class="custom-select-option" type="button" data-value="90d" role="option">90 天</button>
+                    <button class="custom-select-option" type="button" data-value="custom" role="option">自定义到期时间</button>
+                  </div>
+                </div>
+              </div>
+              <div class="floating-input" id="newKeyCustomExpireWrap" hidden>
+                <input id="newKeyCustomExpire" type="datetime-local" placeholder=" " />
+                <label>到期时间</label>
+              </div>
+              <div class="input-row input-row--quota-toggle">
                 <div class="floating-input">
                   <input id="newKeyQuota" type="number" placeholder=" " />
                   <label>额度</label>
                 </div>
+                <label class="ios-toggle ios-toggle--compact">
+                  <div style="display:flex;flex-direction:column;"><span>无限额度</span><span style="font-size:10px;opacity:0.6;font-weight:400">开启后不限制初始额度</span></div>
+                  <input id="newKeyUnlimitedToggle" type="checkbox" />
+                  <div class="track"><div class="thumb"></div></div>
+                </label>
               </div>
               <button id="createKeyBtn" class="primary-button">即刻生成</button>
+              <div class="filter-group key-filter-group">
+                <div class="search-inset">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input id="keySearchInput" type="text" placeholder="查找密钥..." />
+                </div>
+                <button id="keysResetBtn" class="reset-pill">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                  <span>重置</span>
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div class="filter-group glass">
-            <div class="search-inset">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input id="keySearchInput" type="text" placeholder="查找密钥..." />
-            </div>
-            <button id="keysResetBtn" class="reset-pill">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
-              <span>重置</span>
-            </button>
           </div>
 
           <div class="keys-list" id="keysList"></div>
@@ -376,6 +502,33 @@
           </div>
         </section>
 
+        <section class="panel" id="panel-profile">
+          <div class="profile-shell">
+            <section class="profile-hero glass" id="profileHero"></section>
+
+            <section class="profile-card glass">
+              <div class="card-header">
+                <h3>账户资料</h3>
+              </div>
+              <div class="profile-grid" id="profileInfoGrid"></div>
+            </section>
+
+            <section class="profile-card glass">
+              <div class="card-header">
+                <h3>设置中心</h3>
+              </div>
+              <div class="profile-action-list" id="profileSettingList"></div>
+            </section>
+
+            <section class="profile-card glass">
+              <div class="card-header">
+                <h3>账号状态</h3>
+              </div>
+              <div class="profile-status-list" id="profileStatusList"></div>
+            </section>
+          </div>
+        </section>
+
         <section class="subpage" id="modelsPage" aria-hidden="true">
           <div class="subpage-header glass">
             <button id="closeModelsPageBtn" class="action-circle" type="button" aria-label="返回">
@@ -394,6 +547,21 @@
             <div class="models-grid" id="modelsList"></div>
           </div>
         </section>
+
+        <section class="subpage" id="createWorksPage" aria-hidden="true" hidden>
+          <div class="subpage-header glass">
+            <button id="closeCreateWorksPageBtn" class="action-circle" type="button" aria-label="返回">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <div class="subpage-title-group">
+              <h2>我的作品</h2>
+              <p>保存你生成过的视频作品</p>
+            </div>
+          </div>
+          <div class="subpage-body">
+            <div id="createWorksGrid" class="create-works-grid"></div>
+          </div>
+        </section>
       </div>
 
       <nav class="capsule-nav glass" id="tabs">
@@ -409,13 +577,13 @@
           <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3"/><path d="M18 5l3 3"/></svg>
           <span>密钥</span>
         </button>
-        <button class="nav-btn" data-tab="logs">
-          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><path d="M9 9h1"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>
-          <span>明细</span>
-        </button>
         <button class="nav-btn" data-tab="finance">
           <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M3 10h18"/><path d="M16 15h5"/><path d="M18.5 13v4"/></svg>
-          <span>财务</span>
+          <span>购买</span>
+        </button>
+        <button class="nav-btn" data-tab="profile">
+          <svg class="ui-icon nav-symbol" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="5"/></svg>
+          <span>我的</span>
         </button>
         <div class="nav-active-pill"></div>
       </nav>
@@ -487,6 +655,87 @@
           </div>
         </div>
         <button id="affCloseBtn" class="primary-button" style="background:var(--bg-secondary);color:var(--text);box-shadow:none;">关闭</button>
+      </div>
+    </div>
+
+    <div class="modal-overlay modal-overlay--center" id="profileEmailModal" hidden>
+      <div class="modal-mask" data-close-profile-modal="email"></div>
+      <div class="modal-window glass profile-modal-window">
+        <div class="modal-header">
+          <h3>绑定邮箱</h3>
+          <button id="profileEmailCloseBtn" class="close-circle" type="button" aria-label="关闭">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="modern-form">
+            <div class="floating-input">
+              <input id="profileEmailInput" type="email" placeholder=" " />
+              <label>邮箱地址</label>
+            </div>
+            <div class="profile-inline-row">
+              <div class="floating-input" style="flex:1; margin:0;">
+                <input id="profileEmailCodeInput" type="text" placeholder=" " />
+                <label>邮箱验证码</label>
+              </div>
+              <button id="profileEmailSendCodeBtn" class="ghost-button profile-inline-btn" type="button">发送验证码</button>
+            </div>
+            <p class="profile-modal-tip">请输入邮箱和验证码，验证码发送后 10 分钟内有效。</p>
+          </div>
+        </div>
+        <div class="modal-footer"><button id="profileEmailSaveBtn" class="primary-button" type="button">确认绑定</button></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay modal-overlay--center" id="profileUsernameModal" hidden>
+      <div class="modal-mask" data-close-profile-modal="username"></div>
+      <div class="modal-window glass profile-modal-window">
+        <div class="modal-header">
+          <h3>修改用户名</h3>
+          <button id="profileUsernameCloseBtn" class="close-circle" type="button" aria-label="关闭">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="modern-form">
+            <div class="floating-input">
+              <input id="profileUsernameInput" type="text" placeholder=" " maxlength="20" />
+              <label>新用户名</label>
+            </div>
+            <p class="profile-modal-tip">用户名最长 20 个字符，保存后立即生效。</p>
+          </div>
+        </div>
+        <div class="modal-footer"><button id="profileUsernameSaveBtn" class="primary-button" type="button">保存用户名</button></div>
+      </div>
+    </div>
+
+    <div class="modal-overlay modal-overlay--center" id="profilePasswordModal" hidden>
+      <div class="modal-mask" data-close-profile-modal="password"></div>
+      <div class="modal-window glass profile-modal-window">
+        <div class="modal-header">
+          <h3>修改登录密码</h3>
+          <button id="profilePasswordCloseBtn" class="close-circle" type="button" aria-label="关闭">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="modern-form">
+            <div class="floating-input">
+              <input id="profilePasswordCurrentInput" type="password" placeholder=" " />
+              <label>当前密码</label>
+            </div>
+            <div class="floating-input">
+              <input id="profilePasswordNewInput" type="password" placeholder=" " />
+              <label>新密码</label>
+            </div>
+            <div class="floating-input">
+              <input id="profilePasswordConfirmInput" type="password" placeholder=" " />
+              <label>确认新密码</label>
+            </div>
+            <p class="profile-modal-tip">请输入当前密码和新密码，修改后请使用新密码登录。</p>
+          </div>
+        </div>
+        <div class="modal-footer"><button id="profilePasswordSaveBtn" class="primary-button" type="button">更新密码</button></div>
       </div>
     </div>
 

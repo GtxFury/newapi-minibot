@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import axios from "axios";
 
 export class ApiRequestError extends Error {
@@ -53,6 +54,16 @@ function unwrapData(payload) {
     return payload.data;
   }
   return payload;
+}
+
+function buildCookieHeader(setCookieHeaders) {
+  if (!Array.isArray(setCookieHeaders) || !setCookieHeaders.length) {
+    return "";
+  }
+  return setCookieHeaders
+    .map((item) => String(item).split(";")[0])
+    .filter(Boolean)
+    .join("; ");
 }
 
 function countListItems(payload) {
@@ -130,13 +141,16 @@ export class NewApiClient {
     throw lastError || new Error("请求失败");
   }
 
-  async request({ method, path, token, params, data, userId, raw = false }) {
+  async request({ method, path, token, params, data, userId, headers: extraHeaders, raw = false }) {
     const headers = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
     if (userId) {
       headers["New-Api-User"] = String(userId);
+    }
+    if (extraHeaders && typeof extraHeaders === "object") {
+      Object.assign(headers, extraHeaders);
     }
 
     const response = await this.http.request({
@@ -177,13 +191,16 @@ export class NewApiClient {
     return unwrapData(payload);
   }
 
-  async requestStream({ method, path, token, params, data, userId }) {
+  async requestStream({ method, path, token, params, data, userId, headers: extraHeaders }) {
     const headers = {};
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
     if (userId) {
       headers["New-Api-User"] = String(userId);
+    }
+    if (extraHeaders && typeof extraHeaders === "object") {
+      Object.assign(headers, extraHeaders);
     }
 
     const response = await this.http.request({
@@ -212,6 +229,106 @@ export class NewApiClient {
       path: "/api/user/self",
       token: auth.token,
       userId: auth.userId
+    });
+  }
+
+  getUserGroups(auth) {
+    return this.request({
+      method: "GET",
+      path: "/api/user/self/groups",
+      token: auth.token,
+      userId: auth.userId,
+      raw: true
+    }).then((payload) => unwrapData(payload));
+  }
+
+  updateUserSelf(auth, payload) {
+    return this.request({
+      method: "PUT",
+      path: "/api/user/self",
+      token: auth.token,
+      userId: auth.userId,
+      data: payload,
+      raw: true
+    });
+  }
+
+  sendEmailVerification({ email, turnstile = "" }) {
+    return this.request({
+      method: "GET",
+      path: "/api/verification",
+      params: {
+        email,
+        turnstile
+      },
+      raw: true
+    });
+  }
+
+  async loginByTelegram({ botToken, telegramUser }) {
+    const params = {
+      id: String(telegramUser?.id || ""),
+      auth_date: String(Math.floor(Date.now() / 1000))
+    };
+    if (telegramUser?.first_name) params.first_name = String(telegramUser.first_name);
+    if (telegramUser?.last_name) params.last_name = String(telegramUser.last_name);
+    if (telegramUser?.username) params.username = String(telegramUser.username);
+
+    const dataCheckString = Object.keys(params)
+      .sort()
+      .map((key) => `${key}=${params[key]}`)
+      .join("\n");
+    const secret = crypto.createHash("sha256").update(String(botToken || "")).digest();
+    params.hash = crypto.createHmac("sha256", secret).update(dataCheckString).digest("hex");
+
+    const response = await this.http.request({
+      method: "GET",
+      url: "/api/oauth/telegram/login",
+      params,
+      maxRedirects: 0
+    });
+    const payload = response.data;
+
+    if (response.status >= 400) {
+      throw new ApiRequestError(pickMessage(payload), {
+        status: response.status,
+        payload
+      });
+    }
+    if (payload && typeof payload === "object" && payload.success === false) {
+      throw new ApiRequestError(pickMessage(payload), {
+        status: response.status,
+        payload
+      });
+    }
+
+    return {
+      data: unwrapData(payload),
+      cookie: buildCookieHeader(response.headers["set-cookie"])
+    };
+  }
+
+  bindEmailWithCookie({ cookie, email, code }) {
+    return this.request({
+      method: "GET",
+      path: "/api/oauth/email/bind",
+      headers: cookie ? { Cookie: cookie } : undefined,
+      params: {
+        email,
+        code
+      },
+      raw: true
+    });
+  }
+
+  updateUserSetting(auth, payload) {
+    return this.request({
+      method: "PUT",
+      path: "/api/user/setting",
+      token: auth.token,
+      userId: auth.userId,
+      data: payload,
+      raw: true
     });
   }
 

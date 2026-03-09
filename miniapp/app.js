@@ -3,6 +3,7 @@ const CHAT_KEY_STORAGE_KEY = "miniapp_chat_selected_key";
 const CHAT_MODEL_STORAGE_KEY = "miniapp_chat_selected_models";
 const CHAT_SESSIONS_STORAGE_KEY = "miniapp_chat_sessions";
 const CHAT_CURRENT_SESSION_STORAGE_KEY = "miniapp_chat_current_session";
+const CREATE_WORKS_STORAGE_KEY = "miniapp_create_results";
 
 function safeReadStorage(key, fallback = "") {
   try {
@@ -31,6 +32,43 @@ function loadPersistedChatModelSelections() {
   } catch {
     return {};
   }
+}
+
+function loadPersistedCreateResults() {
+  try {
+    const raw = safeReadStorage(CREATE_WORKS_STORAGE_KEY, "");
+    if (!raw) {
+      return { video: [], image: [] };
+    }
+    const parsed = JSON.parse(raw);
+    const normalizeItem = (item) => {
+      if (!item || typeof item !== "object") return null;
+      return {
+        localTaskId: String(item.localTaskId || item.taskId || `work_${Date.now().toString(36)}`),
+        title: String(item.title || "未命名作品"),
+        subtitle: String(item.subtitle || ""),
+        metric: String(item.metric || ""),
+        meta: String(item.meta || ""),
+        gradient: String(item.gradient || "linear-gradient(135deg, #0f172a, #1e293b)"),
+        mediaUrl: String(item.mediaUrl || ""),
+        posterUrl: String(item.posterUrl || ""),
+        taskId: String(item.taskId || ""),
+        rawContent: String(item.rawContent || ""),
+        pending: String(item.pending || ""),
+        createdAt: Number(item.createdAt || Date.now())
+      };
+    };
+    return {
+      video: Array.isArray(parsed?.video) ? parsed.video.map(normalizeItem).filter(Boolean) : [],
+      image: Array.isArray(parsed?.image) ? parsed.image.map(normalizeItem).filter(Boolean) : []
+    };
+  } catch {
+    return { video: [], image: [] };
+  }
+}
+
+function persistCreateResults() {
+  safeWriteStorage(CREATE_WORKS_STORAGE_KEY, JSON.stringify(appState.createResults || { video: [], image: [] }));
 }
 
 function createChatSessionId() {
@@ -86,6 +124,61 @@ function deriveChatSessionTitle(messages, fallback = "新对话") {
   return plain.length > 24 ? `${plain.slice(0, 24)}...` : plain;
 }
 
+const CREATE_MODEL_LIBRARY = {
+  video: [
+    { id: "grok-video", label: "Grok Video", brand: "xAI", accent: "linear-gradient(135deg, #111827, #475569)" },
+    { id: "veo-3-fast", label: "Gemini Video", brand: "Gemini", accent: "linear-gradient(135deg, #0a84ff, #5e5ce6)" },
+    { id: "seedance-pro", label: "Seedance", brand: "Volcengine", accent: "linear-gradient(135deg, #ff6a00, #ffb800)" }
+  ],
+  image: [
+    { id: "gpt-image-1", label: "GPT Image", brand: "OpenAI", accent: "linear-gradient(135deg, #10a37f, #34c759)" },
+    { id: "gemini-2.0-flash-image", label: "Gemini Image", brand: "Gemini", accent: "linear-gradient(135deg, #0a84ff, #5e5ce6)" },
+    { id: "flux-ultra", label: "FLUX Ultra", brand: "Black Forest", accent: "linear-gradient(135deg, #7c3aed, #ec4899)" }
+  ]
+};
+
+const CREATE_PREVIEW_LIBRARY = {
+  video: [
+    {
+      title: "霓虹夜雨",
+      subtitle: "低机位推进 · 湿地反光 · 24fps",
+      metric: "8s",
+      meta: "电影感",
+      gradient: "linear-gradient(180deg, rgba(11,15,25,0.1), rgba(11,15,25,0.82)), radial-gradient(circle at top, rgba(0,163,255,0.34), transparent 34%), linear-gradient(135deg, #08111f, #18263e 42%, #0b1d36 100%)"
+    },
+    {
+      title: "银翼快切",
+      subtitle: "城市疾驰 · 速度变焦 · 赛博灯箱",
+      metric: "12s",
+      meta: "大片",
+      gradient: "linear-gradient(180deg, rgba(10,10,12,0.12), rgba(10,10,12,0.82)), radial-gradient(circle at top right, rgba(255,105,0,0.34), transparent 30%), linear-gradient(135deg, #130d0a, #31283a 40%, #0b1630 100%)"
+    },
+    {
+      title: "玻璃展台",
+      subtitle: "产品旋转 · 柔光扫过 · 高级质感",
+      metric: "6s",
+      meta: "产品",
+      gradient: "linear-gradient(180deg, rgba(7,10,18,0.16), rgba(7,10,18,0.78)), radial-gradient(circle at 80% 0%, rgba(74,222,128,0.22), transparent 32%), linear-gradient(135deg, #0c1321, #1a2230 45%, #182b36 100%)"
+    }
+  ],
+  image: [
+    {
+      title: "封面海报",
+      subtitle: "高对比人像 · 竖版海报 · 品牌字体位",
+      metric: "4K",
+      meta: "海报",
+      gradient: "linear-gradient(180deg, rgba(15,17,24,0.1), rgba(15,17,24,0.8)), radial-gradient(circle at top left, rgba(255,178,0,0.28), transparent 30%), linear-gradient(135deg, #111827, #2b1e38 40%, #151f30 100%)"
+    },
+    {
+      title: "新品主视觉",
+      subtitle: "悬浮构图 · 金属边光 · 留白版式",
+      metric: "2K",
+      meta: "产品",
+      gradient: "linear-gradient(180deg, rgba(9,12,16,0.1), rgba(9,12,16,0.78)), radial-gradient(circle at top right, rgba(0,122,255,0.28), transparent 30%), linear-gradient(135deg, #0f172a, #162235 46%, #1b3442 100%)"
+    }
+  ]
+};
+
 const appState = {
   telegramUser: null,
   me: null,
@@ -97,6 +190,7 @@ const appState = {
   models: [],
   topupInfo: null,
   topupRecords: null,
+  keyGroups: [],
   paymentMethods: [],
   selectedPayAmount: 10,
   selectedPayMethod: "",
@@ -104,6 +198,13 @@ const appState = {
   keyFilter: { search: "", status: "all" },
   modelSearch: "",
   editingKeyId: null,
+  createMode: "video",
+  createStyle: "cinematic",
+  createAspect: "9:16",
+  createDuration: "8s",
+  createModel: "grok-video",
+  createGenerating: false,
+  createResults: loadPersistedCreateResults(),
   logs: [],
   logPage: 1,
   logHasMore: true,
@@ -126,7 +227,8 @@ const appState = {
   modelsRequestPromise: null,
   chatSessionsDrawerOpen: false,
   chatKeyPickerOpen: false,
-  chatModelPickerOpen: false
+  chatModelPickerOpen: false,
+  keyExpirePickerOpen: false
 };
 
 const els = {
@@ -150,6 +252,14 @@ const els = {
   newKeyName: document.getElementById("newKeyName"),
   newKeyGroup: document.getElementById("newKeyGroup"),
   newKeyQuota: document.getElementById("newKeyQuota"),
+  newKeyUnlimitedToggle: document.getElementById("newKeyUnlimitedToggle"),
+  newKeyExpireSelect: document.getElementById("newKeyExpireSelect"),
+  newKeyExpirePreset: document.getElementById("newKeyExpirePreset"),
+  newKeyExpireSelectBtn: document.getElementById("newKeyExpireSelectBtn"),
+  newKeyExpireSelectLabel: document.getElementById("newKeyExpireSelectLabel"),
+  newKeyExpireSelectMenu: document.getElementById("newKeyExpireSelectMenu"),
+  newKeyCustomExpireWrap: document.getElementById("newKeyCustomExpireWrap"),
+  newKeyCustomExpire: document.getElementById("newKeyCustomExpire"),
   createKeyBtn: document.getElementById("createKeyBtn"),
   keySearchInput: document.getElementById("keySearchInput"),
   keysResetBtn: document.getElementById("keysResetBtn"),
@@ -166,6 +276,10 @@ const els = {
   plansList: document.getElementById("plansList"),
   plansCount: document.getElementById("plansCount"),
   topupList: document.getElementById("topupList"),
+  profileHero: document.getElementById("profileHero"),
+  profileInfoGrid: document.getElementById("profileInfoGrid"),
+  profileSettingList: document.getElementById("profileSettingList"),
+  profileStatusList: document.getElementById("profileStatusList"),
   redeemInput: document.getElementById("redeemInput"),
   redeemBtn: document.getElementById("redeemBtn"),
   keyEditorModal: document.getElementById("keyEditorModal"),
@@ -191,9 +305,43 @@ const els = {
   affCopyBtn: document.getElementById("affCopyBtn"),
   affQuotaText: document.getElementById("affQuotaText"),
   affHistoryText: document.getElementById("affHistoryText"),
+  profileEmailModal: document.getElementById("profileEmailModal"),
+  profileEmailCloseBtn: document.getElementById("profileEmailCloseBtn"),
+  profileEmailInput: document.getElementById("profileEmailInput"),
+  profileEmailCodeInput: document.getElementById("profileEmailCodeInput"),
+  profileEmailSendCodeBtn: document.getElementById("profileEmailSendCodeBtn"),
+  profileEmailSaveBtn: document.getElementById("profileEmailSaveBtn"),
+  profileUsernameModal: document.getElementById("profileUsernameModal"),
+  profileUsernameCloseBtn: document.getElementById("profileUsernameCloseBtn"),
+  profileUsernameInput: document.getElementById("profileUsernameInput"),
+  profileUsernameSaveBtn: document.getElementById("profileUsernameSaveBtn"),
+  profilePasswordModal: document.getElementById("profilePasswordModal"),
+  profilePasswordCloseBtn: document.getElementById("profilePasswordCloseBtn"),
+  profilePasswordCurrentInput: document.getElementById("profilePasswordCurrentInput"),
+  profilePasswordNewInput: document.getElementById("profilePasswordNewInput"),
+  profilePasswordConfirmInput: document.getElementById("profilePasswordConfirmInput"),
+  profilePasswordSaveBtn: document.getElementById("profilePasswordSaveBtn"),
   openModelsPageBtn: document.getElementById("openModelsPageBtn"),
   modelsPage: document.getElementById("modelsPage"),
   closeModelsPageBtn: document.getElementById("closeModelsPageBtn"),
+  openCreateWorksBtn: document.getElementById("openCreateWorksBtn"),
+  createWorksPage: document.getElementById("createWorksPage"),
+  closeCreateWorksPageBtn: document.getElementById("closeCreateWorksPageBtn"),
+  createWorksGrid: document.getElementById("createWorksGrid"),
+  createShell: document.getElementById("createShell"),
+  createModeTabs: document.getElementById("createModeTabs"),
+  createPreviewStack: document.getElementById("createPreviewStack"),
+  createSideRail: document.getElementById("createSideRail"),
+  createScrollCueText: document.getElementById("createScrollCueText"),
+  createStageTitle: document.getElementById("createStageTitle"),
+  createStageSubtitle: document.getElementById("createStageSubtitle"),
+  createCapabilityHint: document.getElementById("createCapabilityHint"),
+  createModelChips: document.getElementById("createModelChips"),
+  createPromptInput: document.getElementById("createPromptInput"),
+  createAspectChips: document.getElementById("createAspectChips"),
+  createDurationChips: document.getElementById("createDurationChips"),
+  createStoryboardBtn: document.getElementById("createStoryboardBtn"),
+  createGenerateBtn: document.getElementById("createGenerateBtn"),
   chatSessionTitle: document.getElementById("chatSessionTitle"),
   chatSessionsBtn: document.getElementById("chatSessionsBtn"),
   chatNewSessionBtn: document.getElementById("chatNewSessionBtn"),
@@ -302,6 +450,135 @@ function buildMiniApiHeaders() {
 function formatFullDate(ts) {
   if (!ts || ts <= 0) return "-";
   return new Date(ts * 1000).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+}
+
+function normalizeKeyGroups(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    return [];
+  }
+  return Object.entries(data)
+    .map(([value, meta]) => ({
+      value: String(value || "").trim(),
+      ratio: meta?.ratio ?? "",
+      desc: String(meta?.desc || "").trim()
+    }))
+    .filter((item) => item.value)
+    .sort((a, b) => a.value.localeCompare(b.value, "zh-CN"));
+}
+
+function renderNewKeyGroups() {
+  if (!els.newKeyGroup) return;
+  const groups = Array.isArray(appState.keyGroups) ? appState.keyGroups : [];
+  const currentValue = String(els.newKeyGroup.value || "").trim();
+  const options = [
+    '<option value="">默认分组</option>',
+    ...groups.map((item) => {
+      const suffix = item.ratio || item.desc ? ` (${[item.ratio, item.desc].filter(Boolean).join(" · ")})` : "";
+      return `<option value="${escapeHtml(item.value)}">${escapeHtml(item.value + suffix)}</option>`;
+    })
+  ];
+  els.newKeyGroup.innerHTML = options.join("");
+  if (groups.some((item) => item.value === currentValue)) {
+    els.newKeyGroup.value = currentValue;
+  } else {
+    els.newKeyGroup.value = "";
+  }
+}
+
+const NEW_KEY_EXPIRE_PRESET_OPTIONS = [
+  { value: "never", label: "永久有效" },
+  { value: "1d", label: "1 天" },
+  { value: "7d", label: "7 天" },
+  { value: "30d", label: "30 天" },
+  { value: "90d", label: "90 天" },
+  { value: "custom", label: "自定义到期时间" }
+];
+
+function getNewKeyExpirePresetMeta(value) {
+  return NEW_KEY_EXPIRE_PRESET_OPTIONS.find((item) => item.value === value) || NEW_KEY_EXPIRE_PRESET_OPTIONS[0];
+}
+
+function formatDateTimeLocalValue(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function getDefaultCustomExpireValue() {
+  return formatDateTimeLocalValue(new Date(Date.now() + 7 * 24 * 3600 * 1000));
+}
+
+function renderNewKeyExpireSelect() {
+  const preset = String(els.newKeyExpirePreset?.value || "never").trim();
+  const meta = getNewKeyExpirePresetMeta(preset);
+  if (els.newKeyExpireSelectLabel) {
+    els.newKeyExpireSelectLabel.textContent = meta.label;
+  }
+  if (els.newKeyExpireSelectBtn) {
+    els.newKeyExpireSelectBtn.setAttribute("aria-expanded", appState.keyExpirePickerOpen ? "true" : "false");
+  }
+  if (els.newKeyExpireSelectMenu) {
+    els.newKeyExpireSelectMenu.hidden = !appState.keyExpirePickerOpen;
+    els.newKeyExpireSelectMenu.querySelectorAll("[data-value]").forEach((node) => {
+      const active = node.dataset.value === meta.value;
+      node.classList.toggle("is-active", active);
+      node.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
+}
+
+function setNewKeyExpirePreset(value) {
+  const meta = getNewKeyExpirePresetMeta(String(value || "never").trim());
+  if (els.newKeyExpirePreset) {
+    els.newKeyExpirePreset.value = meta.value;
+  }
+  if (meta.value === "custom" && els.newKeyCustomExpire && !els.newKeyCustomExpire.value) {
+    els.newKeyCustomExpire.value = getDefaultCustomExpireValue();
+  }
+  appState.keyExpirePickerOpen = false;
+  syncNewKeyForm();
+}
+
+function resolveNewKeyExpireTime() {
+  const preset = String(els.newKeyExpirePreset?.value || "never").trim();
+  if (preset === "never") return -1;
+  if (preset === "custom") {
+    const custom = String(els.newKeyCustomExpire?.value || "").trim();
+    if (!custom) return null;
+    const timestamp = new Date(custom).getTime();
+    return Number.isFinite(timestamp) && timestamp > Date.now() ? Math.floor(timestamp / 1000) : null;
+  }
+  const map = {
+    "1d": 1,
+    "7d": 7,
+    "30d": 30,
+    "90d": 90
+  };
+  const days = map[preset];
+  if (!days) return -1;
+  return Math.floor(Date.now() / 1000) + days * 24 * 3600;
+}
+
+function syncNewKeyForm() {
+  if (!els.newKeyQuota) return;
+  const unlimited = Boolean(els.newKeyUnlimitedToggle?.checked);
+  els.newKeyQuota.disabled = unlimited;
+  els.newKeyQuota.closest(".floating-input")?.classList.toggle("is-disabled", unlimited);
+  if (unlimited) {
+    if (els.newKeyQuota.value) {
+      els.newKeyQuota.dataset.previousValue = els.newKeyQuota.value;
+    }
+    els.newKeyQuota.value = "";
+  } else if (!els.newKeyQuota.value && els.newKeyQuota.dataset.previousValue) {
+    els.newKeyQuota.value = els.newKeyQuota.dataset.previousValue;
+  }
+  const expirePreset = String(els.newKeyExpirePreset?.value || "never").trim();
+  if (els.newKeyCustomExpireWrap) {
+    els.newKeyCustomExpireWrap.hidden = expirePreset !== "custom";
+  }
+  if (els.newKeyCustomExpire) {
+    els.newKeyCustomExpire.min = formatDateTimeLocalValue(new Date());
+  }
+  renderNewKeyExpireSelect();
 }
 
 function normalizeNumber(v) {
@@ -707,6 +984,21 @@ function switchTab(tabId) {
       renderChat();
     }
   }
+
+  if (tabId === "create") {
+    renderCreate();
+  }
+  if (tabId === "profile") {
+    renderProfile();
+  }
+  syncCreateViewportLock();
+}
+
+function syncCreateViewportLock() {
+  if (!els.scrollArea) return;
+  const createActive = document.getElementById("panel-create")?.classList.contains("active");
+  const lock = createActive && appState.createMode === "video";
+  els.scrollArea.classList.toggle("content-scroll--locked", lock);
 }
 
 function renderOverview() {
@@ -732,6 +1024,165 @@ function renderOverview() {
   }
 
   renderUsageChart();
+}
+
+function formatProfileText(value, fallback = "未设置") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function getProfileActionMeta(action, me) {
+  const email = String(me?.email || "").trim();
+  const username = String(me?.username || me?.name || "").trim();
+  const actionMap = {
+    bind_email: {
+      title: email ? "更换绑定邮箱" : "绑定邮箱",
+      desc: email ? `当前邮箱 ${email}` : "绑定邮箱后可用于通知与账户恢复",
+      status: email ? "已绑定" : "未绑定",
+      hint: "邮箱绑定"
+    },
+    change_password: {
+      title: "修改登录密码",
+      desc: "更新账号登录密码，提升账户安全性",
+      status: "可修改",
+      hint: "修改登录密码"
+    },
+    change_username: {
+      title: "修改用户名",
+      desc: username ? `当前用户名 ${username}` : "设置新的登录用户名",
+      status: username ? "可修改" : "未设置",
+      hint: "修改用户名"
+    }
+  };
+  return actionMap[action] || {
+    title: "设置项",
+    desc: "功能待接入",
+    status: "待接入",
+    hint: "功能暂未接入"
+  };
+}
+
+function renderProfile() {
+  const me = appState.me || {};
+  const tgUser = appState.telegramUser || tg?.initDataUnsafe?.user || null;
+  const username = formatProfileText(me.username || me.name, "未设置用户名");
+  const email = formatProfileText(me.email, "未绑定邮箱");
+  const displayName = formatProfileText(
+    me.display_name
+      || me.nickname
+      || [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(" ")
+      || tgUser?.username
+      || me.username
+      || me.name,
+    "BilAPI 用户"
+  );
+  const availableQuota = Number(me.quota ?? me.balance ?? 0);
+  const planCount = Array.isArray(appState.subSelf?.subscriptions) ? appState.subSelf.subscriptions.length : 0;
+  const keyCount = Array.isArray(appState.keys) ? appState.keys.length : 0;
+  const telegramLabel = tgUser
+    ? [tgUser?.first_name, tgUser?.last_name].filter(Boolean).join(" ") || tgUser?.username || `TG ${tgUser?.id || ""}`
+    : "";
+  const profileInfo = [
+    { label: "用户名", value: username },
+    { label: "绑定邮箱", value: email },
+    { label: "账户 ID", value: formatProfileText(me.id || me.user_id || me.uid, "-") },
+    { label: "Telegram", value: formatProfileText(tgUser?.username ? `@${tgUser.username}` : telegramLabel || tgUser?.id, "未识别") }
+  ];
+  const statusInfo = [
+    { label: "账号状态", value: Number(me.status ?? 1) === 1 ? "正常" : "受限" },
+    { label: "可用余额", value: formatQuotaAsUsd(availableQuota) },
+    { label: "API Key 数量", value: `${keyCount} 个` },
+    { label: "活跃订阅", value: `${planCount} 个` }
+  ];
+  const actions = ["bind_email", "change_password", "change_username"];
+
+  if (els.profileHero) {
+    els.profileHero.innerHTML = `
+      <div class="profile-hero-copy">
+        <h2>${escapeHtml(displayName)}</h2>
+        <p>${escapeHtml(username)} · ${escapeHtml(email)}</p>
+      </div>
+      <div class="profile-stat-row">
+        <div class="profile-stat">
+          <span>余额</span>
+          <strong>${formatQuotaAsUsd(availableQuota)}</strong>
+        </div>
+        <div class="profile-stat">
+          <span>密钥</span>
+          <strong>${keyCount}</strong>
+        </div>
+        <div class="profile-stat">
+          <span>订阅</span>
+          <strong>${planCount}</strong>
+        </div>
+      </div>
+    `;
+  }
+
+  if (els.profileInfoGrid) {
+    els.profileInfoGrid.innerHTML = profileInfo.map((item) => `
+      <div class="profile-info-item">
+        <span class="profile-info-item__label">${escapeHtml(item.label)}</span>
+        <strong class="profile-info-item__value">${escapeHtml(item.value)}</strong>
+      </div>
+    `).join("");
+  }
+
+  if (els.profileSettingList) {
+    els.profileSettingList.innerHTML = actions.map((action) => {
+      const meta = getProfileActionMeta(action, me);
+      return `
+        <button class="profile-action" type="button" data-profile-action="${action}">
+          <span class="profile-action__main">
+            <strong>${escapeHtml(meta.title)}</strong>
+            <small>${escapeHtml(meta.desc)}</small>
+          </span>
+          <span class="profile-action__side">
+            <span class="profile-action__badge">${escapeHtml(meta.status)}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  if (els.profileStatusList) {
+    els.profileStatusList.innerHTML = statusInfo.map((item) => `
+      <div class="profile-status-item">
+        <span>${escapeHtml(item.label)}</span>
+        <strong>${escapeHtml(item.value)}</strong>
+      </div>
+    `).join("");
+  }
+}
+
+function setProfileModalVisible(modal, visible) {
+  if (!modal) return;
+  modal.hidden = !visible;
+}
+
+function openProfileEmailModal() {
+  if (els.profileEmailInput) {
+    els.profileEmailInput.value = String(appState.me?.email || "").trim();
+  }
+  if (els.profileEmailCodeInput) {
+    els.profileEmailCodeInput.value = "";
+  }
+  setProfileModalVisible(els.profileEmailModal, true);
+}
+
+function openProfileUsernameModal() {
+  if (els.profileUsernameInput) {
+    els.profileUsernameInput.value = String(appState.me?.username || appState.me?.name || "").trim();
+  }
+  setProfileModalVisible(els.profileUsernameModal, true);
+}
+
+function openProfilePasswordModal() {
+  if (els.profilePasswordCurrentInput) els.profilePasswordCurrentInput.value = "";
+  if (els.profilePasswordNewInput) els.profilePasswordNewInput.value = "";
+  if (els.profilePasswordConfirmInput) els.profilePasswordConfirmInput.value = "";
+  setProfileModalVisible(els.profilePasswordModal, true);
 }
 
 function renderUsageChart() {
@@ -918,6 +1369,143 @@ function renderUsageChart() {
   `;
 }
 
+function renderCreate() {
+  const mode = appState.createMode;
+  const isVideo = mode === "video";
+  const models = CREATE_MODEL_LIBRARY[mode] || [];
+  const previews = [
+    ...(Array.isArray(appState.createResults?.[mode]) ? appState.createResults[mode] : []),
+    ...(CREATE_PREVIEW_LIBRARY[mode] || [])
+  ];
+  const aspectOptions = isVideo ? ["9:16", "16:9", "1:1"] : ["1:1", "4:5", "16:9"];
+  const durationOptions = isVideo ? ["8s", "12s", "20s"] : ["1张", "4张", "9张"];
+  const activeModel = models.find((item) => item.id === appState.createModel) || models[0] || null;
+  const imageHeights = ["356px", "312px", "388px", "334px", "372px"];
+
+  if (els.createShell) {
+    els.createShell.dataset.createMode = mode;
+  }
+
+  els.createModeTabs?.querySelectorAll("[data-mode]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.mode === mode);
+  });
+  els.createSideRail?.querySelectorAll("[data-style]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.style === appState.createStyle);
+  });
+
+  if (els.createCapabilityHint) {
+    els.createCapabilityHint.textContent = isVideo
+      ? `当前偏向 ${activeModel?.label || "视频模型"} 的视频创作工作流`
+      : `当前偏向 ${activeModel?.label || "图像模型"} 的图像创作工作流`;
+  }
+  if (els.createScrollCueText) {
+    els.createScrollCueText.textContent = isVideo ? "向下滑动进入视频流" : "向下滑动浏览图片海报流";
+  }
+  if (els.createStageTitle) {
+    els.createStageTitle.textContent = isVideo ? "视频流" : "图片流";
+  }
+  if (els.createStageSubtitle) {
+    els.createStageSubtitle.textContent = isVideo
+      ? "继续下滑浏览完整视频样片"
+      : "一页两列浏览图片灵感，像刷小红书一样看海报";
+  }
+
+  if (els.createModelChips) {
+    els.createModelChips.innerHTML = models.map((item) => `
+      <button
+        class="create-model-chip ${item.id === appState.createModel ? "active" : ""}"
+        type="button"
+        data-create-model="${escapeHtml(item.id)}"
+        style="--create-chip-accent:${item.accent};"
+      >
+        <span class="create-model-chip__brand">${escapeHtml(item.brand)}</span>
+        <strong>${escapeHtml(item.label)}</strong>
+      </button>
+    `).join("");
+  }
+
+  if (els.createAspectChips) {
+    els.createAspectChips.innerHTML = aspectOptions.map((item) => `
+      <button class="create-filter-chip ${item === appState.createAspect ? "active" : ""}" type="button" data-create-aspect="${item}">${item}</button>
+    `).join("");
+  }
+
+  if (els.createDurationChips) {
+    els.createDurationChips.innerHTML = durationOptions.map((item) => `
+      <button class="create-filter-chip ${item === appState.createDuration ? "active" : ""}" type="button" data-create-duration="${item}">${item}</button>
+    `).join("");
+  }
+
+  if (els.createGenerateBtn) {
+    els.createGenerateBtn.disabled = appState.createGenerating;
+    els.createGenerateBtn.textContent = appState.createGenerating ? "生成中..." : "开始创作";
+  }
+  syncCreateViewportLock();
+
+  if (els.createPreviewStack) {
+    els.createPreviewStack.innerHTML = previews.map((item, index) => `
+      <article
+        class="create-preview-card create-preview-card--${isVideo ? "video" : "image"} ${index === 0 ? "is-primary" : ""}"
+        style="--create-preview-bg:${item.gradient};${isVideo ? "" : `--create-preview-height:${imageHeights[index % imageHeights.length]};`}"
+      >
+        ${item.mediaUrl ? `
+          <div class="create-preview-media">
+            ${isVideo
+              ? `<video src="${escapeHtml(item.mediaUrl)}" ${item.posterUrl ? `poster="${escapeHtml(item.posterUrl)}"` : ""} autoplay muted loop playsinline preload="metadata"></video>`
+              : `<img src="${escapeHtml(item.mediaUrl)}" alt="${escapeHtml(item.title || "创作结果")}" loading="lazy" />`
+            }
+          </div>
+        ` : ""}
+        <div class="create-preview-overlay">
+          <div class="create-preview-top">
+            <span>${escapeHtml(item.meta)}</span>
+            <span>${escapeHtml(item.metric)}</span>
+          </div>
+          <div class="create-preview-actions" aria-hidden="true">
+            <span class="create-preview-action">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12"/><path d="M17 2v20"/><path d="M17 2a5 5 0 0 0 5 5"/><path d="M17 12a5 5 0 0 1-5-5"/></svg>
+              <strong>${index === 0 ? "热播" : "灵感"}</strong>
+            </span>
+            <span class="create-preview-action">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h10"/><path d="M12 3v18"/><path d="m8 17 4 4 4-4"/></svg>
+              <strong>${escapeHtml(activeModel?.brand || item.meta)}</strong>
+            </span>
+          </div>
+          ${isVideo ? `
+            <div class="create-preview-play">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m8 5 11 7-11 7z"/></svg>
+            </div>
+          ` : `
+            <div class="create-preview-spark">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 9.9 9.9 3 12l6.9 2.1L12 21l2.1-6.9L21 12l-6.9-2.1z"/></svg>
+            </div>
+          `}
+          <div class="create-preview-bottom">
+            <div class="create-preview-badges">
+              <span>${escapeHtml(isVideo ? appState.createAspect : "海报流")}</span>
+              <span>${escapeHtml(isVideo ? appState.createDuration : "高清输出")}</span>
+            </div>
+            <div class="create-preview-micro">
+              <span>${escapeHtml(activeModel?.label || "Creator")}</span>
+              <span>${escapeHtml(index === 0 ? "精选推荐" : "灵感样片")}</span>
+            </div>
+            <strong>${escapeHtml(item.title)}</strong>
+            <p>${escapeHtml(item.subtitle)}</p>
+            ${!item.mediaUrl && (item.pending || item.taskId || item.rawContent) ? `
+              <div class="create-preview-pending">
+                ${item.pending ? `<span>任务状态：${escapeHtml(item.pending)}</span>` : ""}
+                ${item.taskId ? `<span>任务ID：${escapeHtml(item.taskId)}</span>` : ""}
+                ${item.rawContent ? `<span>${escapeHtml(item.rawContent)}</span>` : ""}
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      </article>
+    `).join("");
+  }
+
+}
+
 const LOBE_ICON_BASE = "https://registry.npmmirror.com/@lobehub/icons-static-svg/latest/files/icons";
 const LOBE_DEFAULT_MODEL_ICON = `${LOBE_ICON_BASE}/submodel.svg`;
 const GEMINI_BADGE_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><path d="M20.616 10.835a14.147 14.147 0 0 1-4.45-3.001 14.111 14.111 0 0 1-3.678-6.452.503.503 0 0 0-.975 0 14.134 14.134 0 0 1-3.679 6.452 14.155 14.155 0 0 1-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 0 0 0 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 0 1 4.45 3.001 14.112 14.112 0 0 1 3.679 6.453.502.502 0 0 0 .975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 0 1 3.001-4.45 14.113 14.113 0 0 1 6.453-3.678.503.503 0 0 0 0-.975 13.245 13.245 0 0 1-2.003-.678z" fill="#3186FF"></path><path d="M20.616 10.835a14.147 14.147 0 0 1-4.45-3.001 14.111 14.111 0 0 1-3.678-6.452.503.503 0 0 0-.975 0 14.134 14.134 0 0 1-3.679 6.452 14.155 14.155 0 0 1-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 0 0 0 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 0 1 4.45 3.001 14.112 14.112 0 0 1 3.679 6.453.502.502 0 0 0 .975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 0 1 3.001-4.45 14.113 14.113 0 0 1 6.453-3.678.503.503 0 0 0 0-.975 13.245 13.245 0 0 1-2.003-.678z" fill="url(#geminiFill0)"></path><path d="M20.616 10.835a14.147 14.147 0 0 1-4.45-3.001 14.111 14.111 0 0 1-3.678-6.452.503.503 0 0 0-.975 0 14.134 14.134 0 0 1-3.679 6.452 14.155 14.155 0 0 1-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 0 0 0 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 0 1 4.45 3.001 14.112 14.112 0 0 1 3.679 6.453.502.502 0 0 0 .975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 0 1 3.001-4.45 14.113 14.113 0 0 1 6.453-3.678.503.503 0 0 0 0-.975 13.245 13.245 0 0 1-2.003-.678z" fill="url(#geminiFill1)"></path><path d="M20.616 10.835a14.147 14.147 0 0 1-4.45-3.001 14.111 14.111 0 0 1-3.678-6.452.503.503 0 0 0-.975 0 14.134 14.134 0 0 1-3.679 6.452 14.155 14.155 0 0 1-4.45 3.001c-.65.28-1.318.505-2.002.678a.502.502 0 0 0 0 .975c.684.172 1.35.397 2.002.677a14.147 14.147 0 0 1 4.45 3.001 14.112 14.112 0 0 1 3.679 6.453.502.502 0 0 0 .975 0c.172-.685.397-1.351.677-2.003a14.145 14.145 0 0 1 3.001-4.45 14.113 14.113 0 0 1 6.453-3.678.503.503 0 0 0 0-.975 13.245 13.245 0 0 1-2.003-.678z" fill="url(#geminiFill2)"></path><defs><linearGradient id="geminiFill0" x1="7" x2="11" y1="15.5" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#08B962"></stop><stop offset="1" stop-color="#08B962" stop-opacity="0"></stop></linearGradient><linearGradient id="geminiFill1" x1="8" x2="11.5" y1="5.5" y2="11" gradientUnits="userSpaceOnUse"><stop stop-color="#F94543"></stop><stop offset="1" stop-color="#F94543" stop-opacity="0"></stop></linearGradient><linearGradient id="geminiFill2" x1="3.5" x2="17.5" y1="13.5" y2="12" gradientUnits="userSpaceOnUse"><stop stop-color="#FABC12"></stop><stop offset=".46" stop-color="#FABC12" stop-opacity="0"></stop></linearGradient></defs></svg>`;
@@ -1087,6 +1675,36 @@ function setModelsPageVisible(visible) {
   if (!els.modelsPage) return;
   els.modelsPage.classList.toggle("active", Boolean(visible));
   els.modelsPage.setAttribute("aria-hidden", visible ? "false" : "true");
+}
+
+function setCreateWorksPageVisible(visible) {
+  if (!els.createWorksPage) return;
+  els.createWorksPage.classList.toggle("active", Boolean(visible));
+  els.createWorksPage.setAttribute("aria-hidden", visible ? "false" : "true");
+  if (visible) {
+    renderCreateWorks();
+  }
+}
+
+function renderCreateWorks() {
+  if (!els.createWorksGrid) return;
+  const items = [...(appState.createResults?.video || [])]
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+
+  els.createWorksGrid.innerHTML = items.map((item) => `
+    <article class="create-work-card">
+      <div class="create-work-media">
+        ${item.mediaUrl
+          ? `<video src="${escapeHtml(item.mediaUrl)}" ${item.posterUrl ? `poster="${escapeHtml(item.posterUrl)}"` : ""} controls preload="metadata" playsinline></video>`
+          : `<div class="create-work-placeholder">${escapeHtml(item.pending || "处理中")}</div>`
+        }
+      </div>
+      <div class="create-work-copy">
+        <strong>${escapeHtml(item.title || "未命名作品")}</strong>
+        <p>${escapeHtml(item.subtitle || item.rawContent || "暂无描述")}</p>
+      </div>
+    </article>
+  `).join("") || '<div class="create-works-empty">还没有保存的作品</div>';
 }
 
 function renderKeys() {
@@ -1968,11 +2586,13 @@ async function loadData() {
   try {
     const resp = await api("/miniapi/bootstrap");
     const d = resp.data || {};
+    appState.telegramUser = d.telegram_user || tg?.initDataUnsafe?.user || null;
     appState.me = d.me || null;
     appState.usage = toArray(d.usage);
     appState.plans = normalizePlans(d.subscription_plans);
     appState.subSelf = d.subscription_self || null;
     appState.keys = toArray(d.keys);
+    appState.keyGroups = normalizeKeyGroups(d.user_groups);
     appState.topupInfo = d.topup_info || null;
     appState.topupRecords = toArray(d.topup_records);
     
@@ -2009,7 +2629,8 @@ async function loadData() {
       els.payAmountInput.value = String(appState.selectedPayAmount);
     }
     
-    renderOverview(); renderKeys(); renderFinance();
+    renderNewKeyGroups();
+    renderOverview(); renderKeys(); renderFinance(); renderProfile(); renderCreate();
     if (appState.chatInitialized) {
       loadChatBootstrap(true);
     }
@@ -2101,6 +2722,149 @@ function bindEvents() {
     setModelsPageVisible(false);
   });
 
+  els.openCreateWorksBtn?.addEventListener("click", () => {
+    setCreateWorksPageVisible(true);
+  });
+
+  els.closeCreateWorksPageBtn?.addEventListener("click", () => {
+    setCreateWorksPageVisible(false);
+  });
+
+  els.createModeTabs?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-mode]");
+    if (!button) return;
+    appState.createMode = button.dataset.mode || "video";
+    const nextModels = CREATE_MODEL_LIBRARY[appState.createMode] || [];
+    appState.createModel = nextModels[0]?.id || "";
+    appState.createAspect = appState.createMode === "video" ? "9:16" : "1:1";
+    appState.createDuration = appState.createMode === "video" ? "8s" : "1张";
+    renderCreate();
+  });
+
+  els.createSideRail?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-style]");
+    if (!button) return;
+    appState.createStyle = button.dataset.style || "cinematic";
+    renderCreate();
+  });
+
+  els.createModelChips?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-create-model]");
+    if (!button) return;
+    appState.createModel = button.dataset.createModel || "";
+    renderCreate();
+  });
+
+  els.createAspectChips?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-create-aspect]");
+    if (!button) return;
+    appState.createAspect = button.dataset.createAspect || "9:16";
+    renderCreate();
+  });
+
+  els.createDurationChips?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-create-duration]");
+    if (!button) return;
+    appState.createDuration = button.dataset.createDuration || "8s";
+    renderCreate();
+  });
+
+  els.createStoryboardBtn?.addEventListener("click", () => {
+    toast("分镜工作流界面已就绪，后续接入实际生成逻辑", "info");
+  });
+
+  els.createGenerateBtn?.addEventListener("click", () => {
+    void (async () => {
+      if (appState.createGenerating) return;
+      if (appState.createMode !== "video") {
+        toast("当前先接入 Grok Video，图片生成接口下一步再接", "error");
+        return;
+      }
+      if (appState.createModel !== "grok-video") {
+        toast("当前仅 Grok Video 已接入真实生成，其他模型先保留 UI", "error");
+        return;
+      }
+
+      const prompt = String(els.createPromptInput?.value || "").trim();
+      if (!prompt) {
+        toast("先输入视频提示词", "error");
+        return;
+      }
+
+      try {
+        const localTaskId = `local_${Date.now().toString(36)}`;
+        const title = prompt.length > 18 ? `${prompt.slice(0, 18)}...` : prompt;
+        const previousScrollTop = Number(els.createPreviewStack?.scrollTop || 0);
+        const preserveViewport = appState.createMode === "video" && previousScrollTop > 24;
+        const insertedHeight = Number(els.createPreviewStack?.clientHeight || window.innerHeight || 0);
+        const pendingItem = {
+          localTaskId,
+          title,
+          subtitle: `${appState.createStyle} · Grok Video · 正在提交`,
+          metric: appState.createDuration,
+          meta: "生成中",
+          gradient: CREATE_PREVIEW_LIBRARY.video[0]?.gradient || "linear-gradient(135deg, #0f172a, #1e293b)",
+          mediaUrl: "",
+          taskId: "",
+          rawContent: "视频任务正在创建，请稍候...",
+          pending: "生成中"
+        };
+        appState.createGenerating = true;
+        appState.createResults.video = [pendingItem, ...(appState.createResults.video || [])].slice(0, 8);
+        persistCreateResults();
+        renderCreate();
+        if (preserveViewport && els.createPreviewStack) {
+          requestAnimationFrame(() => {
+            els.createPreviewStack.scrollTop = previousScrollTop + insertedHeight;
+          });
+        }
+        const resp = await api("/miniapi/create/video", {
+          method: "POST",
+          body: {
+            key_id: appState.selectedChatKeyId || appState.keys?.[0]?.id || "",
+            model: appState.createModel,
+            prompt,
+            aspect_ratio: appState.createAspect,
+            duration: appState.createDuration,
+            style: appState.createStyle
+          }
+        });
+        const data = resp.data || {};
+        const createdItem = {
+          localTaskId,
+          title,
+          subtitle: `${appState.createStyle} · ${data.model || "Grok Video"} · 刚生成`,
+          metric: data.duration ? `${data.duration}s` : appState.createDuration,
+          meta: data.video_url ? "已生成" : "任务已提交",
+          gradient: CREATE_PREVIEW_LIBRARY.video[0]?.gradient || "linear-gradient(135deg, #0f172a, #1e293b)",
+          mediaUrl: data.video_url || "",
+          posterUrl: data.poster_url || "",
+          taskId: data.task_id || "",
+          rawContent: data.raw_content || "",
+          pending: data.video_url ? "" : "排队中"
+        };
+        appState.createResults.video = (appState.createResults.video || []).map((item) =>
+          item.localTaskId === localTaskId ? createdItem : item
+        );
+        persistCreateResults();
+        renderCreate();
+        toast(data.video_url ? "视频生成成功" : "任务已提交，等待返回视频地址", "info");
+      } catch (error) {
+        appState.createResults.video = (appState.createResults.video || []).map((item) =>
+          item.pending === "生成中"
+            ? { ...item, meta: "生成失败", rawContent: error.message || "视频生成失败", pending: "失败" }
+            : item
+        );
+        persistCreateResults();
+        renderCreate();
+        toast(error.message || "视频生成失败", "error");
+      } finally {
+        appState.createGenerating = false;
+        renderCreate();
+      }
+    })();
+  });
+
   els.chatKeyPickerBtn?.addEventListener("click", (event) => {
     event.stopPropagation();
     if (els.chatKeyPickerBtn.disabled) return;
@@ -2153,16 +2917,20 @@ function bindEvents() {
   });
 
   document.addEventListener("click", (event) => {
-    let changed = false;
+    let chatChanged = false;
     if (appState.chatModelPickerOpen && !els.chatModelPicker?.contains(event.target)) {
       appState.chatModelPickerOpen = false;
-      changed = true;
+      chatChanged = true;
     }
     if (appState.chatKeyPickerOpen && !els.chatKeyPicker?.contains(event.target)) {
       appState.chatKeyPickerOpen = false;
-      changed = true;
+      chatChanged = true;
     }
-    if (changed) {
+    if (appState.keyExpirePickerOpen && !els.newKeyExpireSelect?.contains(event.target)) {
+      appState.keyExpirePickerOpen = false;
+      renderNewKeyExpireSelect();
+    }
+    if (chatChanged) {
       renderChat();
     }
   });
@@ -2190,13 +2958,42 @@ function bindEvents() {
   els.modelSearchInput.addEventListener("input", debounce(e => { appState.modelSearch = e.target.value; renderModels(); }, 300));
   els.keySearchInput.addEventListener("input", debounce(e => { appState.keyFilter.search = e.target.value; renderKeys(); }, 300));
   els.keysResetBtn.addEventListener("click", () => { els.keySearchInput.value = ""; appState.keyFilter.search = ""; renderKeys(); });
+  els.newKeyUnlimitedToggle?.addEventListener("change", () => { syncNewKeyForm(); });
+  els.newKeyExpireSelectBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    appState.keyExpirePickerOpen = !appState.keyExpirePickerOpen;
+    renderNewKeyExpireSelect();
+  });
+  els.newKeyExpireSelectMenu?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const option = event.target.closest("[data-value]");
+    if (!option) return;
+    setNewKeyExpirePreset(option.dataset.value || "never");
+  });
+  els.newKeyCustomExpire?.addEventListener("change", () => { syncNewKeyForm(); });
 
   els.logSearchInput.addEventListener("input", debounce(e => { appState.logSearch = e.target.value; loadLogs(true); }, 500));
   els.loadMoreLogsBtn.addEventListener("click", () => { appState.logPage++; loadLogs(false); });
 
   els.createKeyBtn.addEventListener("click", async () => {
-    const payload = { name: els.newKeyName.value, group: els.newKeyGroup.value, remain_quota: Number(els.newKeyQuota.value) };
+    const unlimitedQuota = Boolean(els.newKeyUnlimitedToggle?.checked);
+    const quotaRaw = String(els.newKeyQuota?.value || "").trim();
+    const expiredTime = resolveNewKeyExpireTime();
+    const groupValue = String(els.newKeyGroup?.value || "").trim();
+    const payload = {
+      name: els.newKeyName.value,
+      unlimited_quota: unlimitedQuota
+    };
+    if (groupValue) {
+      payload.group = groupValue;
+    }
     if (!payload.name) return toast("请输入名称", "error");
+    if (expiredTime === null) return toast("请输入有效的到期时间", "error");
+    if (!unlimitedQuota) {
+      if (!quotaRaw) return toast("请输入额度或开启无限额度", "error");
+      payload.remain_quota = Number(quotaRaw);
+    }
+    payload.expired_time = expiredTime;
     try {
       els.createKeyBtn.disabled = true;
       await api("/miniapi/keys", { method: "POST", body: payload });
@@ -2204,6 +3001,12 @@ function bindEvents() {
       els.newKeyName.value = "";
       els.newKeyGroup.value = "";
       els.newKeyQuota.value = "";
+      if (els.newKeyExpirePreset) els.newKeyExpirePreset.value = "never";
+      if (els.newKeyCustomExpire) els.newKeyCustomExpire.value = "";
+      if (els.newKeyUnlimitedToggle) els.newKeyUnlimitedToggle.checked = false;
+      appState.keyExpirePickerOpen = false;
+      delete els.newKeyQuota.dataset.previousValue;
+      syncNewKeyForm();
       await loadData();
     } catch (error) {
       toast("创建失败: " + (error.message || "网络错误"), "error");
@@ -2327,6 +3130,140 @@ function bindEvents() {
     }
   });
 
+  els.profileSettingList?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-profile-action]");
+    if (!button) return;
+    const action = button.dataset.profileAction || "";
+    if (action === "bind_email") {
+      openProfileEmailModal();
+      return;
+    }
+    if (action === "change_username") {
+      openProfileUsernameModal();
+      return;
+    }
+    if (action === "change_password") {
+      openProfilePasswordModal();
+    }
+  });
+
+  els.profileEmailCloseBtn?.addEventListener("click", () => {
+    setProfileModalVisible(els.profileEmailModal, false);
+  });
+  els.profileUsernameCloseBtn?.addEventListener("click", () => {
+    setProfileModalVisible(els.profileUsernameModal, false);
+  });
+  els.profilePasswordCloseBtn?.addEventListener("click", () => {
+    setProfileModalVisible(els.profilePasswordModal, false);
+  });
+
+  els.profileEmailSendCodeBtn?.addEventListener("click", async () => {
+    const email = String(els.profileEmailInput?.value || "").trim();
+    if (!email) {
+      toast("请输入邮箱地址", "error");
+      return;
+    }
+    try {
+      els.profileEmailSendCodeBtn.disabled = true;
+      await api(`/miniapi/verification?email=${encodeURIComponent(email)}`);
+      toast("验证码已发送，请检查邮箱");
+    } catch (error) {
+      toast("发送验证码失败: " + (error.message || "网络错误"), "error");
+    } finally {
+      els.profileEmailSendCodeBtn.disabled = false;
+    }
+  });
+
+  els.profileEmailSaveBtn?.addEventListener("click", async () => {
+    const email = String(els.profileEmailInput?.value || "").trim();
+    const code = String(els.profileEmailCodeInput?.value || "").trim();
+    if (!email) {
+      toast("请输入邮箱地址", "error");
+      return;
+    }
+    if (!code) {
+      toast("请输入邮箱验证码", "error");
+      return;
+    }
+    try {
+      els.profileEmailSaveBtn.disabled = true;
+      const resp = await api("/miniapi/me/email-bind", {
+        method: "POST",
+        body: { email, code }
+      });
+      if (!appState.me) appState.me = {};
+      appState.me.email = resp.data?.email || email;
+      renderProfile();
+      setProfileModalVisible(els.profileEmailModal, false);
+      toast("邮箱绑定成功");
+    } catch (error) {
+      toast("邮箱绑定失败: " + (error.message || "网络错误"), "error");
+    } finally {
+      els.profileEmailSaveBtn.disabled = false;
+    }
+  });
+
+  els.profileUsernameSaveBtn?.addEventListener("click", async () => {
+    const username = String(els.profileUsernameInput?.value || "").trim();
+    if (!username) {
+      toast("请输入用户名", "error");
+      return;
+    }
+    try {
+      els.profileUsernameSaveBtn.disabled = true;
+      const resp = await api("/miniapi/me", {
+        method: "PUT",
+        body: { username }
+      });
+      appState.me = resp.data || appState.me;
+      renderOverview();
+      renderProfile();
+      setProfileModalVisible(els.profileUsernameModal, false);
+      toast("用户名已更新");
+    } catch (error) {
+      toast("修改用户名失败: " + (error.message || "网络错误"), "error");
+    } finally {
+      els.profileUsernameSaveBtn.disabled = false;
+    }
+  });
+
+  els.profilePasswordSaveBtn?.addEventListener("click", async () => {
+    const originalPassword = String(els.profilePasswordCurrentInput?.value || "");
+    const password = String(els.profilePasswordNewInput?.value || "");
+    const confirm = String(els.profilePasswordConfirmInput?.value || "");
+    if (!password) {
+      toast("请输入新密码", "error");
+      return;
+    }
+    if (password.length < 8) {
+      toast("新密码至少 8 位", "error");
+      return;
+    }
+    if (password !== confirm) {
+      toast("两次输入的新密码不一致", "error");
+      return;
+    }
+    try {
+      els.profilePasswordSaveBtn.disabled = true;
+      await api("/miniapi/me", {
+        method: "PUT",
+        body: {
+          original_password: originalPassword,
+          password
+        }
+      });
+      setProfileModalVisible(els.profilePasswordModal, false);
+      if (els.profilePasswordCurrentInput) els.profilePasswordCurrentInput.value = "";
+      if (els.profilePasswordNewInput) els.profilePasswordNewInput.value = "";
+      if (els.profilePasswordConfirmInput) els.profilePasswordConfirmInput.value = "";
+      toast("登录密码已更新");
+    } catch (error) {
+      toast("修改密码失败: " + (error.message || "网络错误"), "error");
+    } finally {
+      els.profilePasswordSaveBtn.disabled = false;
+    }
+  });
+
   els.usageRangeButtons?.addEventListener("click", e => { const btn = e.target.closest(".seg-btn"); if (btn) { appState.usageDays = Number(btn.dataset.days); renderUsageChart(); } });
   
   els.keyEditorCloseBtn.addEventListener("click", () => els.keyEditorModal.hidden = true);
@@ -2362,6 +3299,9 @@ function bindEvents() {
   
   els.affiliateModal.addEventListener("click", e => { if (e.target.closest(".modal-mask")) els.affiliateModal.hidden = true; });
   els.keyEditorModal.addEventListener("click", e => { if (e.target.closest(".modal-mask")) els.keyEditorModal.hidden = true; });
+  els.profileEmailModal?.addEventListener("click", e => { if (e.target.closest(".modal-mask")) setProfileModalVisible(els.profileEmailModal, false); });
+  els.profileUsernameModal?.addEventListener("click", e => { if (e.target.closest(".modal-mask")) setProfileModalVisible(els.profileUsernameModal, false); });
+  els.profilePasswordModal?.addEventListener("click", e => { if (e.target.closest(".modal-mask")) setProfileModalVisible(els.profilePasswordModal, false); });
 }
 
 function init() {
@@ -2369,8 +3309,10 @@ function init() {
   if (els.payAmountInput && !els.payAmountInput.value) {
     els.payAmountInput.value = String(appState.selectedPayAmount);
   }
+  syncNewKeyForm();
   bindEvents();
   renderChat();
+  renderProfile();
   loadData();
 }
 

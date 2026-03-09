@@ -331,6 +331,18 @@ function resolveNewApiAuth(config, store, telegramUserId) {
   };
 }
 
+function deriveTelegramPassword(config, telegramUserId) {
+  const secret = String(config.registerPasswordSecret || config.botToken || "").trim();
+  if (!secret) {
+    return "";
+  }
+  return crypto
+    .createHmac("sha256", secret)
+    .update(String(telegramUserId || ""))
+    .digest("base64url")
+    .slice(0, 20);
+}
+
 function buildUpdateTokenPayload(current, tokenId) {
   return {
     id: parsePositiveInt(current?.id) || parsePositiveInt(tokenId) || Number(tokenId),
@@ -674,6 +686,134 @@ function extractAssistantText(payload) {
   return "";
 }
 
+function normalizeCreateAspectRatio(value) {
+  const normalized = String(value || "").trim();
+  return ["16:9", "9:16", "1:1", "4:5"].includes(normalized) ? normalized : "16:9";
+}
+
+function normalizeCreateDuration(value) {
+  const text = String(value || "").trim().toLowerCase();
+  const matched = text.match(/(\d+)/);
+  const seconds = matched ? Number(matched[1]) : 8;
+  if (!Number.isFinite(seconds)) return 8;
+  return Math.min(20, Math.max(5, seconds));
+}
+
+function extractFirstUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  const match = text.match(/https?:\/\/[^\s"'<>]+/i);
+  return match ? match[0] : "";
+}
+
+function extractHtmlAttribute(html, tagName, attributeName) {
+  const text = String(html || "");
+  if (!text) return "";
+  const pattern = new RegExp(`<${tagName}\\b[^>]*\\s${attributeName}=["']([^"']+)["'][^>]*>`, "i");
+  const match = text.match(pattern);
+  return match ? String(match[1] || "").trim() : "";
+}
+
+function extractVideoSourceUrl(html) {
+  const sourceSrc = extractHtmlAttribute(html, "source", "src");
+  if (sourceSrc) {
+    return sourceSrc;
+  }
+  const videoSrc = extractHtmlAttribute(html, "video", "src");
+  if (videoSrc) {
+    return videoSrc;
+  }
+  const mp4Match = String(html || "").match(/https?:\/\/[^\s"'<>]+\.mp4(?:\?[^\s"'<>]*)?/i);
+  return mp4Match ? String(mp4Match[0] || "").trim() : "";
+}
+
+function extractImageUrl(value) {
+  const text = String(value || "");
+  const match = text.match(/https?:\/\/[^\s"'<>]+\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>]*)?/i);
+  return match ? String(match[0] || "").trim() : "";
+}
+
+function extractGrokVideoData(payload) {
+  const content = extractAssistantText(payload);
+  const payloadText = (() => {
+    try {
+      return JSON.stringify(payload);
+    } catch {
+      return "";
+    }
+  })();
+  const htmlVideoUrl = extractVideoSourceUrl(content);
+  const payloadVideoUrl = extractVideoSourceUrl(payloadText);
+  const posterUrl =
+    extractHtmlAttribute(content, "video", "poster") ||
+    extractHtmlAttribute(payloadText, "video", "poster") ||
+    extractImageUrl(payloadText);
+  const directVideo =
+    htmlVideoUrl ||
+    payloadVideoUrl ||
+    extractFirstUrl(payload?.video_url) ||
+    extractFirstUrl(payload?.url) ||
+    extractFirstUrl(payload?.data?.video_url) ||
+    extractFirstUrl(payload?.data?.url) ||
+    extractVideoSourceUrl(content) ||
+    extractFirstUrl(content) ||
+    extractVideoSourceUrl(payloadText) ||
+    extractFirstUrl(payloadText);
+
+  return {
+    rawContent: content,
+    videoUrl: directVideo,
+    posterUrl,
+    taskId:
+      String(payload?.task_id || "").trim() ||
+      String(payload?.data?.task_id || "").trim() ||
+      String(payload?.id || "").trim()
+  };
+}
+
+async function requestVideoGenerationByKey(apiClient, plainKey, { prompt, aspectRatio, duration, imageUrl = "" }) {
+  const content = [{ type: "text", text: prompt }];
+  if (imageUrl) {
+    content.push({
+      type: "image_url",
+      image_url: {
+        url: imageUrl
+      }
+    });
+  }
+
+  const payload = await apiClient.request({
+    method: "POST",
+    path: "/v1/chat/completions",
+    token: plainKey,
+    data: {
+      model: "grok-imagine-1.0-video",
+      messages: [
+        {
+          role: "user",
+          content
+        }
+      ],
+      stream: false,
+      video_config: {
+        duration,
+        aspect_ratio: aspectRatio
+      }
+    },
+    raw: true
+  });
+
+  const data = extractGrokVideoData(payload);
+  if (!data.videoUrl && !data.taskId) {
+    throw new Error("视频任务已提交，但未返回可识别的视频地址");
+  }
+
+  return {
+    ...data,
+    raw: payload
+  };
+}
+
 async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
   let identity;
   try {
@@ -718,6 +858,7 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
         apiClient.getSubscriptionPlans(auth),
         apiClient.getSubscriptionSelf(auth),
         apiClient.listTokens(auth),
+        apiClient.getUserGroups(auth),
         apiClient.getTopupInfo(auth),
         apiClient.listMyTopups(auth)
       ]);
@@ -727,7 +868,8 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
       const usage = toList(readResult(tasks[1]));
       const subscriptionPlans = normalizeSubscriptionPlans(readResult(tasks[2]));
       const keys = toList(readResult(tasks[4]));
-      const topupRecords = toList(readResult(tasks[6]));
+      const userGroups = readResult(tasks[5]);
+      const topupRecords = toList(readResult(tasks[7]));
 
       sendJson(res, 200, {
         success: true,
@@ -738,7 +880,8 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
           subscription_plans: subscriptionPlans,
           subscription_self: readResult(tasks[3]),
           keys,
-          topup_info: readResult(tasks[5]),
+          user_groups: userGroups,
+          topup_info: readResult(tasks[6]),
           topup_records: topupRecords
         },
         errors: {
@@ -747,8 +890,9 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
           subscription_plans: readError(tasks[2]),
           subscription_self: readError(tasks[3]),
           keys: readError(tasks[4]),
-          topup_info: readError(tasks[5]),
-          topup_records: readError(tasks[6])
+          user_groups: readError(tasks[5]),
+          topup_info: readError(tasks[6]),
+          topup_records: readError(tasks[7])
         }
       });
       return;
@@ -757,6 +901,74 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
     if (method === "GET" && pathname === "/miniapi/me") {
       const data = await apiClient.getUserSelf(auth);
       sendJson(res, 200, { success: true, data });
+      return;
+    }
+
+    if (method === "PUT" && pathname === "/miniapi/me") {
+      const body = await readJsonBody(req);
+      const payload = {};
+      if (body.username !== undefined) payload.username = String(body.username || "").trim();
+      if (body.display_name !== undefined) payload.display_name = String(body.display_name || "").trim();
+      if (body.password !== undefined) payload.password = String(body.password || "");
+      if (body.original_password !== undefined) payload.original_password = String(body.original_password || "");
+
+      if (!Object.keys(payload).length) {
+        sendError(res, 400, "缺少更新字段");
+        return;
+      }
+      if (!payload.original_password && (payload.password || payload.username || payload.display_name)) {
+        const derivedPassword = deriveTelegramPassword(config, identity.userId);
+        if (derivedPassword) {
+          payload.original_password = derivedPassword;
+        }
+      }
+
+      await apiClient.updateUserSelf(auth, payload);
+      const data = await apiClient.getUserSelf(auth);
+      sendJson(res, 200, { success: true, message: "账户信息已更新", data });
+      return;
+    }
+
+    if (method === "GET" && pathname === "/miniapi/verification") {
+      const email = String(urlObj.searchParams.get("email") || "").trim();
+      const turnstile = String(urlObj.searchParams.get("turnstile") || "").trim();
+      if (!email) {
+        sendError(res, 400, "缺少邮箱地址");
+        return;
+      }
+      const data = await apiClient.sendEmailVerification({ email, turnstile });
+      sendJson(res, 200, {
+        success: true,
+        message: data?.message || "验证码发送成功，请检查邮箱"
+      });
+      return;
+    }
+
+    if (method === "POST" && pathname === "/miniapi/me/email-bind") {
+      const body = await readJsonBody(req);
+      const email = String(body.email || "").trim();
+      const code = String(body.code || "").trim();
+      if (!email || !code) {
+        sendError(res, 400, "缺少邮箱或验证码");
+        return;
+      }
+
+      const login = await apiClient.loginByTelegram({
+        botToken: config.botToken,
+        telegramUser: identity.user
+      });
+      if (!login.cookie) {
+        sendError(res, 400, "未获取到登录会话，无法绑定邮箱");
+        return;
+      }
+
+      await apiClient.bindEmailWithCookie({
+        cookie: login.cookie,
+        email,
+        code
+      });
+      const data = await apiClient.getUserSelf(auth);
+      sendJson(res, 200, { success: true, message: "邮箱绑定成功", data });
       return;
     }
 
@@ -943,6 +1155,90 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
           message,
           usage: payload?.usage || null,
           raw: payload
+        }
+      });
+      return;
+    }
+
+    if (method === "POST" && pathname === "/miniapi/create/video") {
+      const body = await readJsonBody(req);
+      const prompt = String(body?.prompt || "").trim();
+      const model = String(body?.model || "").trim();
+      const aspectRatio = normalizeCreateAspectRatio(body?.aspect_ratio || body?.aspectRatio);
+      const duration = normalizeCreateDuration(body?.duration);
+      const imageUrl = String(body?.image_url || body?.imageUrl || "").trim();
+      let selectedKeyId = parsePositiveInt(body?.key_id || body?.keyId);
+
+      if (!prompt) {
+        sendError(res, 400, "请输入视频提示词");
+        return;
+      }
+
+      if (model && !["grok-video", "grok-imagine-1.0-video"].includes(model)) {
+        sendError(res, 400, "当前仅接入 Grok Video，其他模型暂未开放真实生成");
+        return;
+      }
+
+      const [tokens, allModels] = await Promise.all([
+        apiClient.listTokens(auth),
+        apiClient.getModels(auth)
+      ]);
+
+      if (!selectedKeyId) {
+        selectedKeyId = pickChatKey(tokens, allModels)?.id || null;
+      }
+      if (!selectedKeyId) {
+        sendError(res, 400, "当前没有可用 Key，请先创建或选择一个 Key");
+        return;
+      }
+
+      const rawToken = findChatKeyById(tokens, selectedKeyId);
+      if (!rawToken || !isTokenEnabled(rawToken)) {
+        sendError(res, 400, "当前 Key 不可用，请重新选择");
+        return;
+      }
+
+      const detail = await apiClient.getTokenById(auth, selectedKeyId);
+      const mergedToken = {
+        ...rawToken,
+        ...(detail && typeof detail === "object" ? detail : {})
+      };
+
+      const plainKey = extractTokenPlainKey(mergedToken);
+      if (!plainKey) {
+        sendError(res, 500, "无法读取当前 Key 的明文，请重新创建后再试");
+        return;
+      }
+
+      try {
+        const relayModels = normalizeModels(await apiClient.getRelayModelsByKey(plainKey));
+        if (relayModels.length && !relayModels.some((item) => String(item?.id || "") === "grok-imagine-1.0-video")) {
+          sendError(res, 400, "当前 Key 不支持固定视频模型 grok-imagine-1.0-video");
+          return;
+        }
+      } catch {}
+
+      const result = await requestVideoGenerationByKey(apiClient, plainKey, {
+        prompt,
+        aspectRatio,
+        duration,
+        imageUrl
+      });
+
+      sendJson(res, 200, {
+        success: true,
+        data: {
+          key_id: selectedKeyId,
+          model: "grok-imagine-1.0-video",
+          prompt,
+          aspect_ratio: aspectRatio,
+          duration,
+          image_url: imageUrl,
+          video_url: result.videoUrl,
+          poster_url: result.posterUrl,
+          task_id: result.taskId,
+          raw_content: result.rawContent,
+          raw: result.raw
         }
       });
       return;
@@ -1289,7 +1585,16 @@ export async function startMiniAppServer({ config, store, apiClient }) {
 
       sendError(res, 404, "Not Found");
     } catch (error) {
-      sendError(res, 500, "服务器错误", String(error?.message || error));
+      const status = Number(error?.status);
+      const detail =
+        String(
+          error?.payload?.detail ||
+          error?.payload?.error?.message ||
+          error?.payload?.message ||
+          error?.message ||
+          error
+        );
+      sendError(res, Number.isFinite(status) && status >= 400 ? status : 500, "服务器错误", detail);
     }
   });
 
