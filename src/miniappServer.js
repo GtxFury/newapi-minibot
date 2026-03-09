@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { TelegramRegisterService } from "./telegramRegisterService.js";
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -827,6 +828,45 @@ async function handleMiniApi(req, res, urlObj, { config, store, apiClient }) {
   const method = readMethodCode(req.method).toUpperCase();
   void checkRateLimit;
   void resolveRateLimitPolicy;
+
+  if (method === "POST" && pathname === "/miniapi/account/open") {
+    try {
+      const registerService = new TelegramRegisterService({
+        baseUrl: config.baseUrl,
+        botToken: config.botToken,
+        adminToken: config.registerAdminToken,
+        adminUserId: config.registerAdminUserId,
+        usernamePrefix: config.registerUsernamePrefix,
+        passwordSecret: config.registerPasswordSecret
+      });
+
+      const result = await registerService.registerOrLoginByTelegram(identity.user);
+      const token = String(result?.accessToken || "").trim();
+      const userId = parsePositiveInt(result?.user?.id);
+
+      if (!token || !userId) {
+        sendError(res, 502, "开号失败", "已完成注册或登录，但未拿到访问凭证");
+        return;
+      }
+
+      await store.setAuth(identity.userId, { token, userId });
+      const auth = { token, userId };
+      const data = await apiClient.getUserSelf(auth).catch(() => result?.user || null);
+
+      sendJson(res, 200, {
+        success: true,
+        message: result?.alreadyRegistered ? "账号已登录并绑定到 Mini App" : "账号已开通并绑定到 Mini App",
+        data,
+        meta: {
+          already_registered: Boolean(result?.alreadyRegistered)
+        }
+      });
+    } catch (error) {
+      const detail = String(error?.message || error || "开号失败");
+      sendError(res, 400, "开号失败", detail);
+    }
+    return;
+  }
 
   let auth;
   try {

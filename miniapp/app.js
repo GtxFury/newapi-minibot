@@ -182,6 +182,7 @@ const CREATE_PREVIEW_LIBRARY = {
 const appState = {
   telegramUser: null,
   me: null,
+  bootstrapError: "",
   usage: null,
   usageDays: 7,
   plans: [],
@@ -191,6 +192,7 @@ const appState = {
   topupInfo: null,
   topupRecords: null,
   keyGroups: [],
+  expandedPlanId: null,
   paymentMethods: [],
   selectedPayAmount: 10,
   selectedPayMethod: "",
@@ -785,6 +787,28 @@ function normalizeAffiliateData(data) {
   };
 }
 
+function formatPlanQuotaValue(plan) {
+  const quota = Number(plan?.quota);
+  if (!Number.isFinite(quota) || quota <= 0) {
+    return "未限制";
+  }
+  return `${quota.toLocaleString("zh-CN")} quota`;
+}
+
+function collectPlanDetailItems(plan) {
+  const items = [
+    { label: "套餐 ID", value: String(plan?.id || "-") },
+    { label: "套餐周期", value: plan?.duration_label || formatPlanDuration(plan) },
+    { label: "适用分组", value: String(plan?.upgrade_group || plan?.group || "default") },
+    { label: "额度", value: formatPlanQuotaValue(plan) }
+  ];
+  const desc = String(plan?.description || plan?.desc || plan?.content || "").trim();
+  if (desc) {
+    items.push({ label: "说明", value: desc });
+  }
+  return items;
+}
+
 function renderPaymentIcon(method, { compact = false } = {}) {
   const key = String(method || "").trim().toLowerCase();
 
@@ -1035,6 +1059,12 @@ function getProfileActionMeta(action, me) {
   const email = String(me?.email || "").trim();
   const username = String(me?.username || me?.name || "").trim();
   const actionMap = {
+    open_account: {
+      title: "立即开号",
+      desc: "为当前 Telegram 自动开通并绑定一个可用账号",
+      status: "一键开通",
+      hint: "立即开号"
+    },
     bind_email: {
       title: email ? "更换绑定邮箱" : "绑定邮箱",
       desc: email ? `当前邮箱 ${email}` : "绑定邮箱后可用于通知与账户恢复",
@@ -1060,6 +1090,10 @@ function getProfileActionMeta(action, me) {
     status: "待接入",
     hint: "功能暂未接入"
   };
+}
+
+function canOpenMiniAppAccount() {
+  return String(appState.bootstrapError || "").includes("未绑定凭证");
 }
 
 function renderProfile() {
@@ -1094,7 +1128,9 @@ function renderProfile() {
     { label: "API Key 数量", value: `${keyCount} 个` },
     { label: "活跃订阅", value: `${planCount} 个` }
   ];
-  const actions = ["bind_email", "change_password", "change_username"];
+  const actions = canOpenMiniAppAccount()
+    ? ["open_account"]
+    : ["bind_email", "change_password", "change_username"];
 
   if (els.profileHero) {
     els.profileHero.innerHTML = `
@@ -1183,6 +1219,21 @@ function openProfilePasswordModal() {
   if (els.profilePasswordNewInput) els.profilePasswordNewInput.value = "";
   if (els.profilePasswordConfirmInput) els.profilePasswordConfirmInput.value = "";
   setProfileModalVisible(els.profilePasswordModal, true);
+}
+
+async function openMiniAppAccount(button) {
+  if (button) button.disabled = true;
+  try {
+    const resp = await api("/miniapi/account/open", {
+      method: "POST"
+    });
+    toast(resp.message || "账号已开通");
+    await loadData();
+  } catch (error) {
+    toast("开号失败: " + (error.message || "网络错误"), "error");
+  } finally {
+    if (button) button.disabled = false;
+  }
 }
 
 function renderUsageChart() {
@@ -1812,19 +1863,51 @@ function renderFinance() {
   const sub = appState.subSelf || {};
   els.subSelf.innerHTML = (sub.subscriptions || []).map(s => `<div class="item-card" style="background:var(--bg-secondary); border:none;"><div><div style="font-size:11px; font-weight:700; color:var(--text-secondary)">活跃订阅</div><div style="font-weight:700">Plan #${s.plan_id}</div></div><div class="badge">ACTIVE</div></div>`).join("") || '<div class="item-card" style="opacity:0.6; font-size:13px; justify-content:center;">暂无活跃订阅</div>';
   if (els.plansCount) els.plansCount.textContent = (appState.plans || []).length;
-  els.plansList.innerHTML = (appState.plans || []).map(p => `
-    <div class="card glass" style="padding:20px; margin-bottom:12px; border-radius:20px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-        <div><h4 style="font-weight:700">${p.title || "套餐"}</h4><p style="font-size:12px; color:var(--text-secondary)">${p.upgrade_group || "default"}</p></div>
-        <div style="text-align:right"><div style="font-size:20px; font-weight:800; color:var(--accent)">￥${p.price_amount}</div><div style="font-size:11px; opacity:0.6">${p.duration_label || formatPlanDuration(p)}</div></div>
+  els.plansList.innerHTML = (appState.plans || []).map((p) => {
+    const expanded = String(appState.expandedPlanId || "") === String(p.id);
+    const details = collectPlanDetailItems(p);
+    return `
+      <div class="card glass plan-card ${expanded ? "is-expanded" : ""}">
+        <button class="plan-summary" type="button" data-plan-toggle="${p.id}">
+          <div class="plan-summary__main">
+            <h4>${escapeHtml(p.title || "套餐")}</h4>
+            <p>${escapeHtml(p.upgrade_group || "default")} · ${escapeHtml(p.duration_label || formatPlanDuration(p))}</p>
+          </div>
+          <div class="plan-summary__side">
+            <strong>￥${escapeHtml(p.price_amount)}</strong>
+            <span>查看详情</span>
+          </div>
+          <span class="plan-summary__arrow" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </span>
+        </button>
+        <div class="plan-detail" ${expanded ? "" : "hidden"}>
+          <div class="plan-detail-grid">
+            ${details.map((item) => `
+              <div class="plan-detail-item">
+                <span>${escapeHtml(item.label)}</span>
+                <strong>${escapeHtml(item.value)}</strong>
+              </div>
+            `).join("")}
+          </div>
+          <div class="plan-pay-menu">
+            ${appState.paymentMethods.map((m) => {
+              const meta = getPaymentMeta(m);
+              return `
+                <button class="plan-pay-option" type="button" data-plan-id="${p.id}" data-method="${m}">
+                  ${renderPaymentIcon(m)}
+                  <span class="plan-pay-copy">
+                    <strong>${escapeHtml(meta.label)}</strong>
+                    <small>${escapeHtml(meta.code)}</small>
+                  </span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
       </div>
-      <div style="display:flex; gap:8px; margin-top:16px;">
-        ${appState.paymentMethods.map(m => {
-          const meta = getPaymentMeta(m);
-          return `<button class="primary-button plan-buy" style="flex:1; padding:8px; font-size:12px; height:auto;" data-plan-id="${p.id}" data-method="${m}">${renderPaymentIcon(m, { compact: true })}<span>${meta.label}</span></button>`;
-        }).join("")}
-      </div>
-    </div>`).join("");
+    `;
+  }).join("");
   if (els.topupList) {
     els.topupList.innerHTML = (appState.topupRecords || []).slice(0, 10).map(r => `<div class="item-card" style="font-size:13px;"><span>￥${r.amount} · ${r.payment_method}</span><span style="opacity:0.6">${formatDate(r.created_at)}</span></div>`).join("") || '<div class="item-card" style="opacity:0.6; font-size:13px; justify-content:center;">暂无充值记录</div>';
   }
@@ -2586,6 +2669,7 @@ async function loadData() {
   try {
     const resp = await api("/miniapi/bootstrap");
     const d = resp.data || {};
+    appState.bootstrapError = "";
     appState.telegramUser = d.telegram_user || tg?.initDataUnsafe?.user || null;
     appState.me = d.me || null;
     appState.usage = toArray(d.usage);
@@ -2636,7 +2720,23 @@ async function loadData() {
     }
     if (els.authBadge) els.authBadge.textContent = tg?.initData ? "Verified" : "Dev Mode";
   } catch (e) {
-    toast(e.message, "error");
+    const message = String(e?.message || "加载失败");
+    appState.bootstrapError = message;
+    appState.telegramUser = tg?.initDataUnsafe?.user || appState.telegramUser || null;
+    appState.me = null;
+    appState.usage = [];
+    appState.subSelf = null;
+    appState.keys = [];
+    appState.keyGroups = [];
+    renderOverview();
+    renderKeys();
+    renderProfile();
+    if (message.includes("未绑定凭证")) {
+      toast("当前 Telegram 还没开号，请到“我的”里一键开通", "error");
+      if (els.authBadge) els.authBadge.textContent = "未开号";
+      return;
+    }
+    toast(message, "error");
     if (els.authBadge) els.authBadge.textContent = "Auth Error";
   }
 }
@@ -3091,7 +3191,14 @@ function bindEvents() {
   });
 
   els.plansList.addEventListener("click", async e => {
-    const btn = e.target.closest(".plan-buy");
+    const toggle = e.target.closest("[data-plan-toggle]");
+    if (toggle) {
+      const planId = String(toggle.dataset.planToggle || "");
+      appState.expandedPlanId = String(appState.expandedPlanId || "") === planId ? null : planId;
+      renderFinance();
+      return;
+    }
+    const btn = e.target.closest("[data-plan-id][data-method]");
     if (!btn) return;
     const planId = btn.dataset.planId;
     const method = btn.dataset.method;
@@ -3099,7 +3206,7 @@ function bindEvents() {
     const meta = getPaymentMeta(method);
     try {
       btn.disabled = true;
-      btn.textContent = "处理中...";
+      btn.classList.add("is-loading");
       const r = await api("/miniapi/subscription/buy", { method: "POST", body: { plan_id: Number(planId), payment_method: method } });
       if (r.pay_url) {
         openPayLink(r.pay_url);
@@ -3110,7 +3217,8 @@ function bindEvents() {
       toast("购买失败: " + err.message, "error");
     } finally {
       btn.disabled = false;
-      btn.innerHTML = `${renderPaymentIcon(method, { compact: true })}<span>${meta.label}</span>`;
+      btn.classList.remove("is-loading");
+      btn.innerHTML = `${renderPaymentIcon(method)}<span class="plan-pay-copy"><strong>${meta.label}</strong><small>${meta.code}</small></span>`;
     }
   });
   
@@ -3134,6 +3242,10 @@ function bindEvents() {
     const button = event.target.closest("[data-profile-action]");
     if (!button) return;
     const action = button.dataset.profileAction || "";
+    if (action === "open_account") {
+      openMiniAppAccount(button);
+      return;
+    }
     if (action === "bind_email") {
       openProfileEmailModal();
       return;
