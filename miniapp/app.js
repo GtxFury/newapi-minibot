@@ -230,6 +230,7 @@ const appState = {
   chatSessionsDrawerOpen: false,
   chatKeyPickerOpen: false,
   chatModelPickerOpen: false,
+  keyGroupPickerOpen: false,
   keyExpirePickerOpen: false
 };
 
@@ -253,6 +254,10 @@ const els = {
   modelSearchInput: document.getElementById("modelSearchInput"),
   newKeyName: document.getElementById("newKeyName"),
   newKeyGroup: document.getElementById("newKeyGroup"),
+  newKeyGroupSelect: document.getElementById("newKeyGroupSelect"),
+  newKeyGroupSelectBtn: document.getElementById("newKeyGroupSelectBtn"),
+  newKeyGroupSelectLabel: document.getElementById("newKeyGroupSelectLabel"),
+  newKeyGroupSelectMenu: document.getElementById("newKeyGroupSelectMenu"),
   newKeyQuota: document.getElementById("newKeyQuota"),
   newKeyUnlimitedToggle: document.getElementById("newKeyUnlimitedToggle"),
   newKeyExpireSelect: document.getElementById("newKeyExpireSelect"),
@@ -304,6 +309,7 @@ const els = {
   affiliateModal: document.getElementById("affiliateModal"),
   affCloseBtn: document.getElementById("affCloseBtn"),
   affLinkInput: document.getElementById("affLinkInput"),
+  affGenerateBtn: document.getElementById("affGenerateBtn"),
   affCopyBtn: document.getElementById("affCopyBtn"),
   affQuotaText: document.getElementById("affQuotaText"),
   affHistoryText: document.getElementById("affHistoryText"),
@@ -494,19 +500,41 @@ function renderNewKeyGroups() {
   if (!els.newKeyGroup) return;
   const groups = Array.isArray(appState.keyGroups) ? appState.keyGroups : [];
   const currentValue = String(els.newKeyGroup.value || "").trim();
-  const options = [
-    '<option value="">默认分组</option>',
-    ...groups.map((item) => {
-      const suffix = item.ratio || item.desc ? ` (${[item.ratio, item.desc].filter(Boolean).join(" · ")})` : "";
-      return `<option value="${escapeHtml(item.value)}">${escapeHtml(item.value + suffix)}</option>`;
-    })
-  ];
-  els.newKeyGroup.innerHTML = options.join("");
-  if (groups.some((item) => item.value === currentValue)) {
-    els.newKeyGroup.value = currentValue;
-  } else {
-    els.newKeyGroup.value = "";
+  const normalizedValue = groups.some((item) => item.value === currentValue) ? currentValue : "";
+  els.newKeyGroup.value = normalizedValue;
+  if (els.newKeyGroupSelectLabel) {
+    const selected = groups.find((item) => item.value === normalizedValue);
+    const suffix = selected && (selected.ratio || selected.desc)
+      ? ` (${[selected.ratio, selected.desc].filter(Boolean).join(" · ")})`
+      : "";
+    els.newKeyGroupSelectLabel.textContent = selected ? `${selected.value}${suffix}` : "默认分组";
   }
+  if (els.newKeyGroupSelectBtn) {
+    els.newKeyGroupSelectBtn.setAttribute("aria-expanded", appState.keyGroupPickerOpen ? "true" : "false");
+  }
+  if (els.newKeyGroupSelectMenu) {
+    els.newKeyGroupSelectMenu.hidden = !appState.keyGroupPickerOpen;
+    els.newKeyGroupSelectMenu.innerHTML = [
+      '<button class="custom-select-option" type="button" data-value="" role="option">默认分组</button>',
+      ...groups.map((item) => {
+        const suffix = item.ratio || item.desc ? ` (${[item.ratio, item.desc].filter(Boolean).join(" · ")})` : "";
+        return `<button class="custom-select-option" type="button" data-value="${escapeHtml(item.value)}" role="option">${escapeHtml(item.value + suffix)}</button>`;
+      })
+    ].join("");
+    els.newKeyGroupSelectMenu.querySelectorAll("[data-value]").forEach((node) => {
+      const active = String(node.dataset.value || "").trim() === normalizedValue;
+      node.classList.toggle("is-active", active);
+      node.setAttribute("aria-selected", active ? "true" : "false");
+    });
+  }
+}
+
+function setNewKeyGroup(value) {
+  if (els.newKeyGroup) {
+    els.newKeyGroup.value = String(value || "").trim();
+  }
+  appState.keyGroupPickerOpen = false;
+  renderNewKeyGroups();
 }
 
 const NEW_KEY_EXPIRE_PRESET_OPTIONS = [
@@ -901,6 +929,31 @@ function openPayLink(url) {
     tg.openLink(payUrl);
   } else {
     window.open(payUrl, "_blank", "noopener");
+  }
+}
+
+async function refreshAffiliateData({ toastOnSuccess = false } = {}) {
+  const r = await api("/miniapi/affiliate");
+  const affiliate = normalizeAffiliateData(r.data);
+  appState.affiliate = affiliate.raw;
+  renderOverview();
+
+  const me = appState.me || {};
+  const affQuota = Number(me.aff_quota || 0);
+  const affHistoryQuota = Number(me.aff_history_quota || 0);
+
+  if (els.affQuotaText) {
+    els.affQuotaText.textContent = formatQuotaAsUsd(affQuota);
+  }
+  if (els.affHistoryText) {
+    els.affHistoryText.textContent = formatQuotaAsUsd(affHistoryQuota);
+  }
+  if (els.affLinkInput) {
+    els.affLinkInput.value = affiliate.inviteUrl || "未生成";
+  }
+
+  if (toastOnSuccess) {
+    toast(affiliate.inviteUrl ? "邀请链接已生成" : "当前未生成邀请链接");
   }
 }
 
@@ -2765,23 +2818,11 @@ async function loadData() {
     
     // Non-blocking fetch for models and affiliate
     loadModelsShared({ force: true }).catch(() => {});
-    api("/miniapi/affiliate").then(r => { 
-      const affiliate = normalizeAffiliateData(r.data);
-      appState.affiliate = affiliate.raw; 
-      renderOverview();
-      const me = appState.me || {};
-      const affQuota = Number(me.aff_quota || 0);
-      const affHistoryQuota = Number(me.aff_history_quota || 0);
-      if(affiliate.affCode || affiliate.raw) {
-        els.affQuotaText.textContent = formatQuotaAsUsd(affQuota);
-        els.affHistoryText.textContent = formatQuotaAsUsd(affHistoryQuota);
-        els.affLinkInput.value = affiliate.inviteUrl || "未生成";
-      } else {
-        els.affQuotaText.textContent = "$0.00";
-        els.affHistoryText.textContent = "$0.00";
-        els.affLinkInput.value = "未生成";
-      }
-    }).catch(()=>{});
+    refreshAffiliateData().catch(() => {
+      if (els.affQuotaText) els.affQuotaText.textContent = "$0.00";
+      if (els.affHistoryText) els.affHistoryText.textContent = "$0.00";
+      if (els.affLinkInput) els.affLinkInput.value = "未生成";
+    });
 
     const payAmountOptions = Array.isArray(d.topup_info?.amount_options) ? d.topup_info.amount_options : [10, 20, 50, 100, 200];
     appState.paymentMethods = normalizePaymentMethods(d.topup_info);
@@ -3108,6 +3149,10 @@ function bindEvents() {
       appState.chatKeyPickerOpen = false;
       chatChanged = true;
     }
+    if (appState.keyGroupPickerOpen && !els.newKeyGroupSelect?.contains(event.target)) {
+      appState.keyGroupPickerOpen = false;
+      renderNewKeyGroups();
+    }
     if (appState.keyExpirePickerOpen && !els.newKeyExpireSelect?.contains(event.target)) {
       appState.keyExpirePickerOpen = false;
       renderNewKeyExpireSelect();
@@ -3141,9 +3186,24 @@ function bindEvents() {
   els.keySearchInput.addEventListener("input", debounce(e => { appState.keyFilter.search = e.target.value; renderKeys(); }, 300));
   els.keysResetBtn.addEventListener("click", () => { els.keySearchInput.value = ""; appState.keyFilter.search = ""; renderKeys(); });
   els.newKeyUnlimitedToggle?.addEventListener("change", () => { syncNewKeyForm(); });
+  els.newKeyGroupSelectBtn?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    appState.keyExpirePickerOpen = false;
+    appState.keyGroupPickerOpen = !appState.keyGroupPickerOpen;
+    renderNewKeyExpireSelect();
+    renderNewKeyGroups();
+  });
+  els.newKeyGroupSelectMenu?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const option = event.target.closest("[data-value]");
+    if (!option) return;
+    setNewKeyGroup(option.dataset.value || "");
+  });
   els.newKeyExpireSelectBtn?.addEventListener("click", (event) => {
     event.stopPropagation();
+    appState.keyGroupPickerOpen = false;
     appState.keyExpirePickerOpen = !appState.keyExpirePickerOpen;
+    renderNewKeyGroups();
     renderNewKeyExpireSelect();
   });
   els.newKeyExpireSelectMenu?.addEventListener("click", (event) => {
@@ -3181,11 +3241,12 @@ function bindEvents() {
       await api("/miniapi/keys", { method: "POST", body: payload });
       toast("Key 已创建");
       els.newKeyName.value = "";
-      els.newKeyGroup.value = "";
+      if (els.newKeyGroup) els.newKeyGroup.value = "";
       els.newKeyQuota.value = "";
       if (els.newKeyExpirePreset) els.newKeyExpirePreset.value = "never";
       if (els.newKeyCustomExpire) els.newKeyCustomExpire.value = "";
       if (els.newKeyUnlimitedToggle) els.newKeyUnlimitedToggle.checked = false;
+      appState.keyGroupPickerOpen = false;
       appState.keyExpirePickerOpen = false;
       delete els.newKeyQuota.dataset.previousValue;
       syncNewKeyForm();
@@ -3489,6 +3550,16 @@ function bindEvents() {
 
   els.inviteBtn.addEventListener("click", () => els.affiliateModal.hidden = false);
   els.affCloseBtn.addEventListener("click", () => els.affiliateModal.hidden = true);
+  els.affGenerateBtn?.addEventListener("click", async () => {
+    try {
+      els.affGenerateBtn.disabled = true;
+      await refreshAffiliateData({ toastOnSuccess: true });
+    } catch (error) {
+      toast("生成邀请链接失败: " + (error.message || "网络错误"), "error");
+    } finally {
+      els.affGenerateBtn.disabled = false;
+    }
+  });
   els.affCopyBtn.addEventListener("click", () => { navigator.clipboard.writeText(els.affLinkInput.value); toast("已复制邀请链接"); });
   
   els.affiliateModal.addEventListener("click", e => { if (e.target.closest(".modal-mask")) els.affiliateModal.hidden = true; });

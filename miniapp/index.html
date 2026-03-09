@@ -401,11 +401,15 @@
                 <label>Key 名称</label>
               </div>
               <div class="input-row">
-                <div class="floating-input">
-                  <select id="newKeyGroup">
-                    <option value="" selected>默认分组</option>
-                  </select>
+                <div class="floating-input custom-select" id="newKeyGroupSelect">
+                  <input id="newKeyGroup" type="hidden" value="" />
+                  <button id="newKeyGroupSelectBtn" class="custom-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                    <span id="newKeyGroupSelectLabel">默认分组</span>
+                  </button>
                   <label>分组</label>
+                  <div class="custom-select-menu" id="newKeyGroupSelectMenu" role="listbox" hidden>
+                    <button class="custom-select-option" type="button" data-value="" role="option">默认分组</button>
+                  </div>
                 </div>
                 <div class="floating-input custom-select" id="newKeyExpireSelect">
                   <input id="newKeyExpirePreset" type="hidden" value="never" />
@@ -651,6 +655,7 @@
           <div style="font-size:11px;font-weight:800;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;">您的专属邀请链接</div>
           <div style="display:flex;gap:8px;">
             <input id="affLinkInput" type="text" readonly style="flex:1;background:transparent;border:none;font-weight:700;font-size:13px;color:var(--text);outline:none;font-family:monospace;" />
+            <button id="affGenerateBtn" class="copy-pill" style="height:32px;">生成</button>
             <button id="affCopyBtn" class="copy-pill" style="height:32px;">复制</button>
           </div>
         </div>
