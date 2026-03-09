@@ -862,11 +862,14 @@ function normalizeApiInfo(data) {
 }
 
 function formatPlanQuotaValue(plan) {
-  const quota = Number(plan?.quota);
-  if (!Number.isFinite(quota) || quota <= 0) {
-    return "未限制";
+  const totalAmount = Number(plan?.total_amount ?? plan?.totalAmount ?? plan?.quota ?? plan?.amount ?? 0);
+  if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+    return "未设置";
   }
-  return `${quota.toLocaleString("zh-CN")} quota`;
+  if (totalAmount === 0) {
+    return "不限";
+  }
+  return formatQuotaAsUsd(totalAmount);
 }
 
 function collectPlanDetailItems(plan) {
@@ -874,7 +877,7 @@ function collectPlanDetailItems(plan) {
     { label: "套餐 ID", value: String(plan?.id || "-") },
     { label: "套餐周期", value: plan?.duration_label || formatPlanDuration(plan) },
     { label: "适用分组", value: String(plan?.upgrade_group || plan?.group || "default") },
-    { label: "额度", value: formatPlanQuotaValue(plan) }
+    { label: "总额度", value: formatPlanQuotaValue(plan) }
   ];
   const desc = String(plan?.description || plan?.desc || plan?.content || "").trim();
   if (desc) {
